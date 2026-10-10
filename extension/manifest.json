@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "Forms I Answered",
+  "version": "0.1.0",
+  "description": "Lists the Google Forms you have opened or submitted, from this browser's history and from now on, synced across your desktop browsers.",
+  "minimum_chrome_version": "116",
+  "permissions": ["history", "storage", "webNavigation"],
+  "host_permissions": ["https://docs.google.com/*"],
+  "background": { "service_worker": "src/background.js", "type": "module" },
+  "action": { "default_title": "Forms I Answered" }
+}
