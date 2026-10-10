@@ -85,3 +85,6 @@ npm test               # unit tests for the parsing and merging logic
 npm run test:browser   # loads the extension into Chromium against fake Google pages
 npm run zip            # packs extension/ into forms-i-answered.zip
 ```
+
+GitHub Actions runs both test suites on every pull request and every push to main, and keeps the
+browser test's screenshots as a build artifact.
