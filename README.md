@@ -18,8 +18,10 @@ accepts responses.
   across Edge browsers signed in to one Microsoft account. Chrome and Edge do not share a list.
 - **Phones.** Phone browsers cannot run extensions. Import a Google Takeout export of your Chrome
   history (below) to add what your phone's synced Chrome history still holds.
-- **Open or closed.** "Check which are still open" loads each form with your own sign-in and reports
-  open, closed, sign-in needed, already responded, deleted or unknown.
+- **Open or closed, daily.** Once a day, starting a few minutes after install, it loads each form
+  with your own sign-in and reports open, closed, sign-in needed, already responded, deleted or
+  unknown. "Check which are still open" runs the same check on demand. The list page shows when it
+  last ran.
 - **Export.** "Download CSV" saves the list as it is filtered.
 
 ### Install
@@ -31,7 +33,35 @@ accepts responses.
 
 Repeat on each computer. Each one adds its own history to the shared list.
 
-### Add your phone with Google Takeout
+The extension always has the same ID, `mganadollnpacccnbhcmnjcebjkcikek`, wherever it is unzipped.
+The `key` in `manifest.json` fixes it. That matters because browser sync storage is keyed to the ID:
+without it, each computer's copy got an ID from its folder path, and the lists never merged.
+
+**Upgrading from version 0.1.0:** the old copy had a path-based ID, so the new copy starts with an
+empty list. Click "Download CSV" in the old copy first if you want to keep it, then remove the old
+copy and load the new one. The first scan re-reads your history, so most of the list comes back
+anyway.
+
+### Add your phone
+
+Phone browsers cannot run extensions, so phone history has to arrive another way. Try the first route
+before the second.
+
+**1. Chrome sync (automatic, if it works).** The extension reads the history Chrome gives it. If
+Chrome includes history synced from your phone, phone forms appear with no extra steps. Whether it
+does is not documented, so test it once:
+
+1. On your phone, in Chrome: open Settings, tap your account, then Sync, and make sure **History**
+   is on. The menu wording differs a little between Android, iPhone and Chrome versions.
+2. On your computer, in Chrome: Settings › You and Google › Sync and Google services › Manage what
+   you sync, and make sure **History** is on. Both must be signed in to the same Google account.
+3. On your phone, open any Google Form. You do not need to submit it.
+4. Wait a minute or two, then on the computer click **Rescan this browser's history**.
+
+If the form appears, synced history reaches the extension and your phone is covered from now on,
+back as far as Chrome keeps history. If it does not appear after a few minutes, use route 2.
+
+**2. Google Takeout (manual, any time).**
 
 1. Open https://takeout.google.com, click **Deselect all**, then tick **Chrome**.
 2. Under Chrome, click **All Chrome data included** and leave only **History** ticked.
@@ -39,8 +69,9 @@ Repeat on each computer. Each one adds its own history to the shared list.
 4. In the extension, click **Import Google Takeout history** and pick `Chrome/History.json`
    (named `BrowserHistory.json` in some exports).
 
-Takeout only has what Chrome sync uploaded, so your phone's Chrome needs history sync on. Takeout
-names devices by an opaque id, shown as "Takeout ab12cd".
+Takeout only has what Chrome sync uploaded, so your phone's Chrome needs history sync on (step 1
+above). Takeout names devices by an opaque id, shown as "Takeout ab12cd". Repeat the export
+whenever you want to bring the list up to date; importing the same file twice adds nothing twice.
 
 ### What it stores, and where
 
@@ -57,6 +88,7 @@ list says so. "Forget everything" deletes the records from every synced browser.
 | history | read past visits to Google Forms |
 | webNavigation | catch the page after Submit even if history leaves it out |
 | storage | keep and sync the list |
+| alarms | run the open/closed check once a day |
 | docs.google.com | read form titles, and load forms for the open/closed check |
 
 ### Known limits
@@ -67,6 +99,14 @@ list says so. "Forget everything" deletes the records from every synced browser.
 - Forms answered in another app's built-in browser (Instagram, Discord, Teams) never reach Chrome's
   history.
 - The open/closed check reads Google's public form page, which Google can change without notice.
+
+### The signing key
+
+`manifest.json` holds only the public half of the key. The private half is not in this repo and must
+never be committed (`*.pem` is ignored). You need it once: when first uploading to the Chrome Web
+Store, put it in the root of the zip, named `key.pem`, and the store keeps the same ID. If it is
+lost, the store assigns a new ID; replace `key` in the manifest with the one the store shows, and
+update `EXTENSION_ID` in `tests/manifest.test.js`.
 
 ## tools/find_forms_in_history.py
 

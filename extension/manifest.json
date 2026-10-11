@@ -1,11 +1,24 @@
 {
   "manifest_version": 3,
   "name": "Forms I Answered",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Lists the Google Forms you have opened or submitted, from this browser's history and from now on, synced across your desktop browsers.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAlXm0dy2VnkJPRbMYJ7YBZOIfZCYy1R2lrpd6ehO9gEJ/ywQUYI3lKU4gzUDKTOt6BsPtbxaI/wtRwqe8edBhKeW2sBFdadEWp/u1lwDA4OLqQpLwOUBQp+kAPsPVoB5lVQM62QZsS7HK7IFBIocDEd06c+uOqB2gJF9cRwViI0ZtQBYD1YdoAHDjteL7jVW1uo4S08E9+F4ZmKoVk6jJE58wzmBYeH3O4lStXG3b1aJWfB1UryK2JFdSbvxXICG8fwhq+HzIwZx0d2geiYFCD1MsyT1BA2qnKpu1Li4LYhiqibVrUVPjrPTIaPr9R6Ba4ByMYY/lKGWiVyBogiemUQIDAQAB",
   "minimum_chrome_version": "116",
-  "permissions": ["history", "storage", "webNavigation"],
-  "host_permissions": ["https://docs.google.com/*"],
-  "background": { "service_worker": "src/background.js", "type": "module" },
-  "action": { "default_title": "Forms I Answered" }
+  "permissions": [
+    "history",
+    "storage",
+    "webNavigation",
+    "alarms"
+  ],
+  "host_permissions": [
+    "https://docs.google.com/*"
+  ],
+  "background": {
+    "service_worker": "src/background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Forms I Answered"
+  }
 }
