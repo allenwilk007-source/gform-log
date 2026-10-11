@@ -4,49 +4,58 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Forms I Answered</title>
+  <link rel="icon" href="icons/icon-32.png">
   <link rel="stylesheet" href="list.css">
 </head>
 <body>
-  <header>
-    <h1>Forms I Answered</h1>
-    <p id="summary" role="status">Loading…</p>
-  </header>
+  <main>
+    <header class="top">
+      <div class="brand">
+        <img src="icons/icon-48.png" alt="" width="32" height="32">
+        <h1>Forms I Answered</h1>
+      </div>
+      <button id="check" class="primary">Check now</button>
+    </header>
+    <p id="checked" class="status-line" aria-live="polite"></p>
 
-  <section class="controls" aria-label="Filters">
-    <label><input type="search" id="q" placeholder="Search titles"></label>
-    <label><input type="checkbox" id="submittedOnly"> Submitted only</label>
-    <label><input type="checkbox" id="hideEditor" checked> Hide forms I can edit</label>
-  </section>
+    <div class="bar">
+      <nav class="tabs" aria-label="Show">
+        <button data-filter="all" aria-pressed="true">All <span class="count" data-count="all"></span></button>
+        <button data-filter="open" aria-pressed="false">Open <span class="count" data-count="open"></span></button>
+        <button data-filter="submitted" aria-pressed="false">Submitted <span class="count" data-count="submitted"></span></button>
+        <button data-filter="closed" aria-pressed="false">Closed <span class="count" data-count="closed"></span></button>
+      </nav>
+      <input type="search" id="q" placeholder="Search forms" aria-label="Search forms">
+    </div>
 
-  <section class="actions" aria-label="Actions">
-    <button id="rescan">Rescan this browser's history</button>
-    <button id="check">Check which are still open</button>
-    <label class="button">Import Google Takeout history…
-      <input type="file" id="takeout" accept=".json,application/json" hidden>
-    </label>
-    <button id="csv">Download CSV</button>
-  </section>
+    <p id="notice" role="alert" hidden></p>
 
-  <p id="notice" role="alert" hidden></p>
+    <ul id="list" class="cards" aria-label="Forms"></ul>
+    <p id="empty" class="empty" hidden></p>
 
-  <div class="table-wrap">
-    <table>
-      <thead>
-        <tr><th>Form</th><th>Submitted</th><th>Open?</th><th>Last seen</th><th>Seen on</th></tr>
-      </thead>
-      <tbody id="rows"></tbody>
-    </table>
-  </div>
-
-  <footer>
-    <p>
-      This browser is called
-      <input id="device" aria-label="Name for this browser" size="22">
-      in the list. Records sync through your browser account to your other desktop Chrome (or Edge)
-      browsers. Phones cannot run extensions: import a Google Takeout file to include them.
-    </p>
-    <p><button id="clear" class="danger">Forget everything</button></p>
-  </footer>
+    <details class="more">
+      <summary>More options</summary>
+      <div class="more-body">
+        <div class="more-actions">
+          <button id="rescan">Rescan this browser's history</button>
+          <label class="button">Import Google Takeout history…
+            <input type="file" id="takeout" accept=".json,application/json" hidden>
+          </label>
+          <button id="csv">Download CSV</button>
+        </div>
+        <label class="check"><input type="checkbox" id="showEditor"> Show forms I can edit (usually ones I made)</label>
+        <label class="field">Name for this browser
+          <input id="device" maxlength="40">
+        </label>
+        <p class="hint">
+          The list syncs to every Chrome signed in to your Google account with sync on, and separately
+          between Edge browsers on one Microsoft account. Phones cannot run extensions: see
+          "Add your phone" in the README.
+        </p>
+        <button id="clear" class="danger">Forget everything</button>
+      </div>
+    </details>
+  </main>
   <script type="module" src="src/list.js"></script>
 </body>
 </html>

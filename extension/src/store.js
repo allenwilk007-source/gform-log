@@ -66,7 +66,7 @@ export async function syncProblem() {
 export async function clearAll() {
   const [sync, local] = await Promise.all([chrome.storage.sync.get(null), chrome.storage.local.get(null)]);
   await chrome.storage.sync.remove(Object.keys(sync).filter((k) => k.startsWith(PREFIX)));
-  await chrome.storage.local.remove([...Object.keys(local).filter((k) => k.startsWith(PREFIX)), SYNC_FULL, 'status']);
+  await chrome.storage.local.remove([...Object.keys(local).filter((k) => k.startsWith(PREFIX)), SYNC_FULL, 'status', 'checkRun']);
 }
 
 export async function loadStatus() {
@@ -75,4 +75,13 @@ export async function loadStatus() {
 
 export async function saveStatus(status) {
   await chrome.storage.local.set({ status });
+}
+
+/** Progress and outcome of the latest open/closed check: {running, trigger, started, finished, done, total, error}. */
+export async function loadCheckRun() {
+  return (await chrome.storage.local.get('checkRun')).checkRun ?? null;
+}
+
+export async function saveCheckRun(checkRun) {
+  await chrome.storage.local.set({ checkRun });
 }

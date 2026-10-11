@@ -1,5 +1,6 @@
+import { checkAll, DAILY_ALARM, DAY_MINUTES } from './check.js';
 import { parseFormUrl, recordsFromHistory } from './forms.js';
-import { deviceName, upsert } from './store.js';
+import { deviceName, loadAll, loadStatus, saveCheckRun, saveStatus, upsert } from './store.js';
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -12,6 +13,40 @@ export async function scanHistory(since = 0) {
   return { scanned: items.length, forms: records.size, written, local };
 }
 
+let checking = null;
+/** Checks whether each form still takes responses. A second call while one runs joins the first. */
+export function runCheck(trigger) {
+  checking ??= (async () => {
+    const started = Date.now();
+    await saveCheckRun({ running: true, trigger, started, done: 0, total: 0 });
+    try {
+      const records = await loadAll();
+      const before = await loadStatus();
+      const { total } = await checkAll(records, {
+        save: async (partial, progress) => {
+          await saveStatus({ ...before, ...partial });
+          await saveCheckRun({ running: true, trigger, started, ...progress });
+        },
+      });
+      await saveCheckRun({ running: false, trigger, started, finished: Date.now(), done: total, total });
+      return { total };
+    } catch (e) {
+      await saveCheckRun({ running: false, trigger, started, finished: Date.now(), error: String(e?.message ?? e) });
+      throw e;
+    }
+  })().finally(() => {
+    checking = null;
+  });
+  return checking;
+}
+
+async function ensureDailyAlarm() {
+  if (!(await chrome.alarms.get(DAILY_ALARM))) {
+    // First run a few minutes after install or start, then once a day.
+    chrome.alarms.create(DAILY_ALARM, { delayInMinutes: 5, periodInMinutes: DAY_MINUTES });
+  }
+}
+
 async function rememberVisit(url, title, at) {
   if (!parseFormUrl(url)) return;
   await upsert(recordsFromHistory([{ url, title, lastVisitTime: at }], await deviceName()));
@@ -20,8 +55,15 @@ async function rememberVisit(url, title, at) {
 // The first install reads all history Chrome still has. Each browser start catches up on the last week.
 chrome.runtime.onInstalled.addListener(({ reason }) => {
   if (reason === 'install') scanHistory(0);
+  ensureDailyAlarm();
 });
-chrome.runtime.onStartup.addListener(() => scanHistory(Date.now() - 7 * DAY));
+chrome.runtime.onStartup.addListener(() => {
+  scanHistory(Date.now() - 7 * DAY);
+  ensureDailyAlarm();
+});
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === DAILY_ALARM) runCheck('daily');
+});
 
 // Two listeners for the same thing on purpose: history may skip the page shown after a form is
 // submitted, while webNavigation sees every committed navigation whether or not history keeps it.
@@ -45,9 +87,8 @@ chrome.webNavigation.onCompleted.addListener(
 chrome.action.onClicked.addListener(() => chrome.tabs.create({ url: chrome.runtime.getURL('list.html') }));
 
 chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
-  if (msg?.type === 'scan') {
-    scanHistory(msg.since ?? 0).then(reply, (e) => reply({ error: String(e?.message ?? e) }));
-    return true;
-  }
+  const answer = (p) => p.then(reply, (e) => reply({ error: String(e?.message ?? e) }));
+  if (msg?.type === 'scan') return answer(scanHistory(msg.since ?? 0)), true;
+  if (msg?.type === 'check') return answer(runCheck('button')), true;
   return false;
 });
