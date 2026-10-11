@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Forms I Answered",
+  "name": "Form History",
   "version": "0.4.0",
   "description": "Lists the Google Forms you have opened or submitted, and whether each is still open. Chrome and Edge can share one list through your own Google Drive.",
   "icons": {
@@ -28,7 +28,7 @@
     "type": "module"
   },
   "action": {
-    "default_title": "Forms I Answered",
+    "default_title": "Form History",
     "default_icon": {
       "16": "icons/icon-16.png",
       "32": "icons/icon-32.png",

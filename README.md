@@ -4,7 +4,7 @@ Google has no list of the Google Forms you have answered. The Forms API only ope
 can edit, and the owner of a form holds its responses. This repo builds that list yourself, from the
 places a record actually exists: your browser.
 
-## Forms I Answered (Chrome / Edge / Brave extension)
+## Form History (Chrome / Edge / Brave extension)
 
 The extension lists every Google Form you have opened or submitted, and whether each one still
 accepts responses.
@@ -105,7 +105,7 @@ in to have its own client ID. The project you made for form-board works, or crea
 1. Open https://console.cloud.google.com and pick the project.
 2. Go to **APIs & Services › Library**, search for **Google Drive API**, and click **Enable**.
 3. Go to **Google Auth Platform** (called **OAuth consent screen** in some versions).
-   - If it asks you to get started, give the app a name, such as "Forms I Answered", and your email.
+   - If it asks you to get started, give the app a name, such as "Form History", and your email.
      Choose **External**.
    - Under **Data access**, click **Add or remove scopes**. Add
      `https://www.googleapis.com/auth/drive.appdata`, which Google lists as "See, create, and delete
@@ -185,7 +185,7 @@ npm install
 npm test               # unit tests for the parsing and merging logic
 npm run test:browser   # loads the extension into Chromium against fake Google pages, then runs two
                        # browser profiles that share one list through a fake Google Drive
-npm run zip            # packs extension/ into forms-i-answered.zip
+npm run zip            # packs extension/ into form-history.zip
 ```
 
 GitHub Actions runs both test suites on every pull request and every push to main, and keeps the

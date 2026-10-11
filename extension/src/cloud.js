@@ -2,7 +2,7 @@
 // folder of the user's own Google Drive. Pure logic only; src/sync.js does the talking.
 import { mergeRecords } from './forms.js';
 
-export const DOC_NAME = 'forms-i-answered.json';
+export const DOC_NAME = 'form-history.json';
 export const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
 
 /**
