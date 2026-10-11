@@ -1,73 +1,78 @@
 import { formLink, recordsFromHistory, takeoutHistoryItems, toCsv } from './forms.js';
+import { ago, buildView } from './view.js';
 import { clearAll, deviceName, loadAll, loadCheckRun, loadStatus, setDeviceName, syncProblem, upsert } from './store.js';
 
 const $ = (id) => document.getElementById(id);
+/** Builds an element. Text goes in through textContent only, never as HTML. */
+function el(tag, props = {}, ...children) {
+  const node = Object.assign(document.createElement(tag), props);
+  node.append(...children);
+  return node;
+}
+
 let records = new Map();
 let status = {};
 let checkRun = null;
-
-const when = (ms) => new Date(ms).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
-const fmt = (ms) => (ms > 1 ? new Date(ms).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '');
+let filter = 'all';
 
 function notice(text) {
   $('notice').hidden = !text;
   $('notice').textContent = text ?? '';
 }
 
-function visible() {
-  const q = $('q').value.trim().toLowerCase();
-  return [...records]
-    .filter(([, r]) => !$('submittedOnly').checked || r.s)
-    .filter(([, r]) => !$('hideEditor').checked || !r.e || r.s)
-    .filter(([id, r]) => !q || r.t.toLowerCase().includes(q) || id.toLowerCase().includes(q))
-    .sort(([, a], [, b]) => (b.s ? 1 : 0) - (a.s ? 1 : 0) || b.l - a.l);
+function card({ id, rec, submitted, open }) {
+  const title = el('a', {
+    className: rec.t ? 'title' : 'title untitled',
+    href: formLink(id, rec),
+    target: '_blank',
+    rel: 'noopener',
+    textContent: rec.t || 'Untitled form',
+  });
+  const seen = [rec.l > 1 && `Last opened ${ago(rec.l)}`, (rec.d ?? []).join(', ')].filter(Boolean).join(' · ');
+  const submittedMark = el('span', {
+    className: `mark ${submitted ? 'submitted' : 'not-submitted'}`,
+    textContent: submitted ? 'Submitted' : 'Not submitted',
+    title: submitted && rec.s > 1 ? `Submitted ${new Date(rec.s).toLocaleString()}` : '',
+  });
+  const openMark = el('span', { className: `mark ${open.key}`, textContent: open.label, title: open.hint });
+  return el(
+    'li',
+    { className: 'card' },
+    el('div', { className: 'card-main' }, title, el('div', { className: 'meta', textContent: seen })),
+    el('div', { className: 'marks' }, submittedMark, openMark),
+  );
 }
 
-function cell(row, text, cls) {
-  const td = row.insertCell();
-  td.textContent = text;
-  if (cls) td.className = cls;
-  return td;
+function statusLine() {
+  if (!checkRun) return 'Whether each form is open is checked automatically once a day.';
+  if (checkRun.running) return `Checking which forms are open: ${checkRun.done ?? 0} of ${checkRun.total || '…'}`;
+  if (checkRun.error) return `The last check failed: ${checkRun.error}`;
+  return `Checked ${ago(checkRun.finished)}. Checked again automatically once a day.`;
 }
+
+const EMPTY = {
+  all: 'No Google Forms found yet. Open a form in this browser and it appears here.',
+  open: 'No open forms. Forms show here once a check finds them taking responses.',
+  submitted: 'No submitted forms yet.',
+  closed: 'No closed forms.',
+};
 
 function render() {
-  const rows = visible();
-  const body = $('rows');
-  body.replaceChildren();
-  for (const [id, r] of rows) {
-    const tr = body.insertRow();
-    const name = tr.insertCell();
-    const a = document.createElement('a');
-    a.href = formLink(id, r);
-    a.target = '_blank';
-    a.rel = 'noopener';
-    a.textContent = r.t || '(no title recorded)';
-    name.append(a);
-    if (r.e) name.append(Object.assign(document.createElement('div'), { className: 'small', textContent: 'you can edit this form' }));
-    cell(tr, r.s ? (r.s > 1 ? fmt(r.s) : 'yes') : '', r.s ? 'yes' : '');
-    const st = status[id]?.state ?? (r.c ? 'closed' : '');
-    cell(tr, st, st === 'closed' ? 'closed' : st === 'open' ? 'open' : '');
-    cell(tr, fmt(r.l));
-    cell(tr, (r.d ?? []).join(', '), 'small');
-  }
-  const total = records.size;
-  const submitted = [...records.values()].filter((r) => r.s).length;
-  $('summary').textContent = total
-    ? `${total} form(s) found, ${submitted} submitted. Showing ${rows.length}.`
-    : 'No Google Forms found yet. Rescan, or import a Takeout file.';
-  $('checked').textContent = !checkRun
-    ? 'Open or closed is checked once a day, starting a few minutes after install.'
-    : checkRun.running
-      ? `Checking which forms are still open: ${checkRun.done ?? 0} of ${checkRun.total ?? '?'}…`
-      : checkRun.error
-        ? `The last open/closed check failed: ${checkRun.error}`
-        : `Open or closed last checked ${when(checkRun.finished)}. Checked again automatically once a day.`;
+  const { rows, counts } = buildView(records, status, { filter, query: $('q').value, showEditor: $('showEditor').checked });
+  for (const b of document.querySelectorAll('[data-filter]')) b.setAttribute('aria-pressed', String(b.dataset.filter === filter));
+  for (const c of document.querySelectorAll('[data-count]')) c.textContent = counts[c.dataset.count];
+  $('list').replaceChildren(...rows.map(card));
+  $('empty').hidden = rows.length > 0;
+  $('empty').textContent = $('q').value.trim() ? 'No forms match your search.' : EMPTY[filter];
+  $('checked').textContent = statusLine();
+  $('check').disabled = Boolean(checkRun?.running);
+  $('check').textContent = checkRun?.running ? 'Checking…' : 'Check now';
 }
 
 async function refresh() {
   [records, status, checkRun] = await Promise.all([loadAll(), loadStatus(), loadCheckRun()]);
   const problem = await syncProblem();
-  if (problem) notice(`Some records are kept only in this browser because sync storage refused them: ${problem}`);
+  if (problem) notice(`Some forms are kept only in this browser because sync storage is full: ${problem}`);
   render();
 }
 
@@ -83,13 +88,14 @@ async function busy(button, work) {
   }
 }
 
-$('rescan').addEventListener('click', (e) =>
-  busy(e.currentTarget, async () => {
-    const r = await chrome.runtime.sendMessage({ type: 'scan', since: 0 });
-    if (r?.error) throw new Error(r.error);
-    notice(`Read ${r.scanned} history entries and found ${r.forms} form(s).`);
-  }),
-);
+for (const b of document.querySelectorAll('[data-filter]')) {
+  b.addEventListener('click', () => {
+    filter = b.dataset.filter;
+    render();
+  });
+}
+$('q').addEventListener('input', render);
+$('showEditor').addEventListener('change', render);
 
 $('check').addEventListener('click', (e) =>
   busy(e.currentTarget, async () => {
@@ -97,6 +103,14 @@ $('check').addEventListener('click', (e) =>
     const r = await chrome.runtime.sendMessage({ type: 'check' });
     if (r?.error) throw new Error(r.error);
     notice(`Checked ${r.total} form(s).`);
+  }),
+);
+
+$('rescan').addEventListener('click', (e) =>
+  busy(e.currentTarget, async () => {
+    const r = await chrome.runtime.sendMessage({ type: 'scan', since: 0 });
+    if (r?.error) throw new Error(r.error);
+    notice(`Read ${r.scanned} history entries and found ${r.forms} form(s).`);
   }),
 );
 
@@ -116,8 +130,9 @@ $('takeout').addEventListener('change', async (e) => {
 });
 
 $('csv').addEventListener('click', () => {
-  const blob = new Blob([toCsv(visible())], { type: 'text/csv' });
-  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: 'google-forms.csv' });
+  const { rows } = buildView(records, status, { filter, query: $('q').value, showEditor: $('showEditor').checked });
+  const blob = new Blob([toCsv(rows.map((r) => [r.id, r.rec]))], { type: 'text/csv' });
+  const a = el('a', { href: URL.createObjectURL(blob), download: 'google-forms.csv' });
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 });
@@ -130,7 +145,6 @@ $('clear').addEventListener('click', (e) =>
   }),
 );
 
-for (const id of ['q', 'submittedOnly', 'hideEditor']) $(id).addEventListener('input', render);
 $('device').addEventListener('change', (e) => setDeviceName(e.target.value));
 chrome.storage.onChanged.addListener(() => refresh());
 

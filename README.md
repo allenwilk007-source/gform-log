@@ -20,9 +20,17 @@ accepts responses.
   history (below) to add what your phone's synced Chrome history still holds.
 - **Open or closed, daily.** Once a day, starting a few minutes after install, it loads each form
   with your own sign-in and reports open, closed, sign-in needed, already responded, deleted or
-  unknown. "Check which are still open" runs the same check on demand. The list page shows when it
+  unknown. "Check now" runs the same check on demand. The list page shows when it
   last ran.
-- **Export.** "Download CSV" saves the list as it is filtered.
+- **Export.** "Download CSV", under "More options", saves the list as it is filtered.
+
+### The list
+
+Each form shows two marks: **Submitted** or **Not submitted**, and **Open**, **Closed** or a grey
+"not known yet" mark. Tabs filter to Open, Submitted or Closed, with a count on each. Open forms you
+have not submitted come first, because those are the ones still worth acting on. Rescanning,
+importing, exporting, renaming this browser and showing forms you made yourself are under
+"More options".
 
 ### Install
 
@@ -56,7 +64,8 @@ does is not documented, so test it once:
 2. On your computer, in Chrome: Settings › You and Google › Sync and Google services › Manage what
    you sync, and make sure **History** is on. Both must be signed in to the same Google account.
 3. On your phone, open any Google Form. You do not need to submit it.
-4. Wait a minute or two, then on the computer click **Rescan this browser's history**.
+4. Wait a minute or two, then on the computer open **More options** and click **Rescan this
+   browser's history**.
 
 If the form appears, synced history reaches the extension and your phone is covered from now on,
 back as far as Chrome keeps history. If it does not appear after a few minutes, use route 2.
@@ -66,7 +75,7 @@ back as far as Chrome keeps history. If it does not appear after a few minutes, 
 1. Open https://takeout.google.com, click **Deselect all**, then tick **Chrome**.
 2. Under Chrome, click **All Chrome data included** and leave only **History** ticked.
 3. Export once, download, and unzip.
-4. In the extension, click **Import Google Takeout history** and pick `Chrome/History.json`
+4. In the extension, open **More options**, click **Import Google Takeout history** and pick `Chrome/History.json`
    (named `BrowserHistory.json` in some exports).
 
 Takeout only has what Chrome sync uploaded, so your phone's Chrome needs history sync on (step 1
