@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Forms I Answered",
-  "version": "0.3.0",
-  "description": "Lists the Google Forms you have opened or submitted, from this browser's history and from now on, synced across your desktop browsers.",
+  "version": "0.4.0",
+  "description": "Lists the Google Forms you have opened or submitted, and whether each is still open. Chrome and Edge can share one list through your own Google Drive.",
   "icons": {
     "16": "icons/icon-16.png",
     "32": "icons/icon-32.png",
@@ -15,10 +15,13 @@
     "history",
     "storage",
     "webNavigation",
-    "alarms"
+    "alarms",
+    "identity"
   ],
   "host_permissions": [
-    "https://docs.google.com/*"
+    "https://docs.google.com/*",
+    "https://www.googleapis.com/*",
+    "https://oauth2.googleapis.com/*"
   ],
   "background": {
     "service_worker": "src/background.js",
