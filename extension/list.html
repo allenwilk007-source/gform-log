@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Forms I Answered</title>
+  <link rel="stylesheet" href="list.css">
+</head>
+<body>
+  <header>
+    <h1>Forms I Answered</h1>
+    <p id="summary" role="status">Loading…</p>
+  </header>
+
+  <section class="controls" aria-label="Filters">
+    <label><input type="search" id="q" placeholder="Search titles"></label>
+    <label><input type="checkbox" id="submittedOnly"> Submitted only</label>
+    <label><input type="checkbox" id="hideEditor" checked> Hide forms I can edit</label>
+  </section>
+
+  <section class="actions" aria-label="Actions">
+    <button id="rescan">Rescan this browser's history</button>
+    <button id="check">Check which are still open</button>
+    <label class="button">Import Google Takeout history…
+      <input type="file" id="takeout" accept=".json,application/json" hidden>
+    </label>
+    <button id="csv">Download CSV</button>
+  </section>
+
+  <p id="notice" role="alert" hidden></p>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Form</th><th>Submitted</th><th>Open?</th><th>Last seen</th><th>Seen on</th></tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+
+  <footer>
+    <p>
+      This browser is called
+      <input id="device" aria-label="Name for this browser" size="22">
+      in the list. Records sync through your browser account to your other desktop Chrome (or Edge)
+      browsers. Phones cannot run extensions: import a Google Takeout file to include them.
+    </p>
+    <p><button id="clear" class="danger">Forget everything</button></p>
+  </footer>
+  <script type="module" src="src/list.js"></script>
+</body>
+</html>
