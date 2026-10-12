@@ -92,3 +92,13 @@ test('Drive client: request shapes, and an expired token is told apart', async (
   const broken = createDrive({ token: 't', fetchFn: async () => new Response(null, { status: 500 }) });
   await assert.rejects(broken.find('x'), /answered 500/);
 });
+
+test('sharing errors say what to fix', async () => {
+  const { explainSharingError } = await import('../extension/src/cloud.js');
+  const uri = 'https://x.chromiumapp.org/';
+  assert.match(explainSharingError('Google sign-in did not finish. The user did not approve access.', uri), /closed before sign-in finished/);
+  assert.match(explainSharingError('Google sign-in did not finish. Authorization page could not be loaded.', uri), /Authorized redirect URI is not exactly https:\/\/x\.chromiumapp\.org\//);
+  assert.match(explainSharingError('Google sign-in failed: access_denied', uri), /Test users/);
+  assert.match(explainSharingError('Google Drive answered 403.', uri), /Google Drive API/);
+  assert.equal(explainSharingError('Something new', uri), 'Something new');
+});

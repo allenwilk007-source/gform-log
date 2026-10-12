@@ -1,3 +1,4 @@
+import { explainSharingError } from './cloud.js';
 import { formLink, recordsFromHistory, takeoutHistoryItems, toCsv } from './forms.js';
 import { ago, buildView } from './view.js';
 import { clearAll, deviceName, loadAll, loadCheckRun, loadStatus, setDeviceName, syncProblem, upsert } from './store.js';
@@ -182,23 +183,45 @@ $('cloud-open').addEventListener('click', () => {
   $('more').open = true;
   $('cloud-h').scrollIntoView({ behavior: 'smooth', block: 'start' });
 });
-$('save-client').addEventListener('click', (e) =>
-  busy(e.currentTarget, async () => {
+$('save-client').addEventListener('click', async () => {
+  try {
     await setClientId($('client-id').value);
     editingClient = false;
+    cloudMsg('Saved. Now sign in with Google.', 'info');
     notice('Saved. Now sign in with Google.');
-  }),
-);
+  } catch (err) {
+    cloudMsg(String(err?.message ?? err));
+  }
+  await refresh();
+});
 $('change-client').addEventListener('click', () => {
   editingClient = true;
   renderCloud();
 });
-const syncWith = (interactive) => async (e) =>
-  busy(e.currentTarget, async () => {
+/** A message inside the sharing panel, where the person who just clicked is looking. */
+function cloudMsg(text, kind = 'error') {
+  $('cloud-msg').hidden = !text;
+  $('cloud-msg').className = `cloud-msg ${kind === 'info' ? 'info' : ''}`;
+  $('cloud-msg').textContent = text ?? '';
+}
+
+const syncWith = (interactive) => async (e) => {
+  const button = e.currentTarget;
+  button.disabled = true;
+  cloudMsg(interactive && !cloud?.email ? 'Opening Google sign-in in a new window…' : 'Syncing…', 'info');
+  try {
     const r = await chrome.runtime.sendMessage({ type: 'sync', interactive });
     if (r?.error) throw new Error(r.error);
+    cloudMsg('');
     if (r?.state === 'synced') notice(`Synced. The shared list has ${r.forms} form(s).`);
-  });
+    else if (r?.state === 'signed-out') cloudMsg('Sign-in did not start. Check the client ID, then try again.');
+  } catch (err) {
+    cloudMsg(explainSharingError(err?.message ?? err, chrome.identity.getRedirectURL()));
+  } finally {
+    button.disabled = false;
+    await refresh();
+  }
+};
 $('signin').addEventListener('click', syncWith(true));
 $('sync').addEventListener('click', syncWith(true));
 $('signout').addEventListener('click', (e) =>

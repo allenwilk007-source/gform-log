@@ -77,3 +77,24 @@ export function tokenFromRedirect(redirected, now = Date.now()) {
   const seconds = Number(p.get('expires_in')) || 3600;
   return { token, expires: now + seconds * 1000 };
 }
+
+/** Turns Chrome's and Google's terse sign-in and Drive errors into what to do about them. */
+export function explainSharingError(message, redirectUri) {
+  const m = String(message ?? '');
+  if (/did not approve|cancel|closed/i.test(m)) {
+    return 'The Google window was closed before sign-in finished. Click "Sign in with Google" again.';
+  }
+  if (/could not be loaded|invalid_client|redirect_uri/i.test(m)) {
+    return (
+      'Google refused the sign-in. Usually the client ID is wrong, or the client is not a "Web application", ' +
+      `or its Authorized redirect URI is not exactly ${redirectUri} (with the slash at the end). Check both under Google Auth Platform › Clients.`
+    );
+  }
+  if (/access_denied/i.test(m)) {
+    return 'Google denied access. While the app is in Testing, only test users can sign in: add your address under Google Auth Platform › Audience › Test users.';
+  }
+  if (/answered 403/.test(m)) {
+    return 'Google Drive refused access. Turn on the Google Drive API in the same Google Cloud project (APIs & Services › Library), wait a minute, then try again.';
+  }
+  return m;
+}
