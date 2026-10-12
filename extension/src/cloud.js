@@ -81,6 +81,12 @@ export function tokenFromRedirect(redirected, now = Date.now()) {
 /** Turns Chrome's and Google's terse sign-in and Drive errors into what to do about them. */
 export function explainSharingError(message, redirectUri) {
   const m = String(message ?? '');
+  if (/only one web auth flow/i.test(m)) {
+    return (
+      'A Google sign-in window from an earlier attempt is still open. Find it (it may be behind this window or ' +
+      'on the taskbar), read what it says, then close it and try again. If you cannot find it, restart the browser.'
+    );
+  }
   if (/did not approve|cancel|closed/i.test(m)) {
     return 'The Google window was closed before sign-in finished. Click "Sign in with Google" again.';
   }

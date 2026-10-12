@@ -32,31 +32,46 @@ export async function setClientId(value) {
 
 // ---- sign-in -----------------------------------------------------------------------------------
 
-/** An access token for the Drive app-data folder, or null when the user has to sign in first. */
-async function getToken({ interactive }) {
+/** True while this browser holds a token with more than a minute left. */
+export async function hasFreshToken() {
+  const { auth } = await chrome.storage.session.get('auth');
+  return Boolean(auth?.token && auth.expires > Date.now() + 60_000);
+}
+
+/**
+ * Opens Google's sign-in window. Called from the list page, not the background worker: the page
+ * stays open while the person signs in, whereas Chrome may stop an idle background worker partway
+ * through and leave the window orphaned, blocking every later attempt.
+ */
+export async function signIn() {
+  const { clientId, email } = await loadCloud();
+  if (!clientId) throw new Error('Save a Google client ID first.');
+  const url = authUrl({ clientId, redirectUri: chrome.identity.getRedirectURL(), hint: email });
+  let redirected;
+  try {
+    redirected = await chrome.identity.launchWebAuthFlow({ url, interactive: true });
+  } catch (e) {
+    throw new Error(`Google sign-in did not finish. ${e?.message ?? ''}`.trim());
+  }
+  // Session storage lives in memory only, so the token never reaches the disk.
+  await chrome.storage.session.set({ auth: tokenFromRedirect(redirected) });
+}
+
+/** The current token, renewed quietly if it is about to run out. Null when never signed in here. */
+async function getToken() {
   const { auth } = await chrome.storage.session.get('auth');
   if (auth?.token && auth.expires > Date.now() + 60_000) return auth.token;
   const { clientId, email } = await loadCloud();
-  if (!clientId || (!interactive && !email)) return null;
-  const url = authUrl({ clientId, redirectUri: chrome.identity.getRedirectURL(), hint: email, silent: !interactive });
-  let redirected;
-  try {
-    redirected = await chrome.identity.launchWebAuthFlow(
-      interactive ? { url, interactive: true } : { url, interactive: false, abortOnLoadForNonInteractive: false, timeoutMsForNonInteractive: 15_000 },
-    );
-  } catch (e) {
-    if (interactive) throw new Error(`Google sign-in did not finish. ${e?.message ?? ''}`.trim());
-    // A quiet renewal that needs the user (signed out of Google, or access withdrawn).
-    throw new AuthError('Google sign-in needs renewing.');
-  }
+  if (!clientId || !email) return null;
+  const url = authUrl({ clientId, redirectUri: chrome.identity.getRedirectURL(), hint: email, silent: true });
   let fresh;
   try {
+    const redirected = await chrome.identity.launchWebAuthFlow({ url, interactive: false, abortOnLoadForNonInteractive: false, timeoutMsForNonInteractive: 15_000 });
     fresh = tokenFromRedirect(redirected);
-  } catch (e) {
-    if (interactive) throw e;
-    throw new AuthError(e.message);
+  } catch {
+    // Renewing needs the person (signed out of Google, or access withdrawn).
+    throw new AuthError('Google sign-in needs renewing.');
   }
-  // Session storage lives in memory only, so the token never reaches the disk.
   await chrome.storage.session.set({ auth: fresh });
   return fresh.token;
 }
@@ -86,11 +101,11 @@ async function applyLocally(merged, local) {
 
 let running = null;
 
-/** One sync run. `interactive` opens Google's sign-in window when needed; otherwise it stays quiet. */
-export function syncNow({ interactive = false } = {}) {
+/** One sync run. Never opens a window: problems come back as { state: 'error', error }. */
+export function syncNow() {
   running ??= (async () => {
     try {
-      const token = await getToken({ interactive });
+      const token = await getToken();
       if (!token) return { state: 'signed-out' };
       await saveCloud({ running: true });
       const drive = createDrive({ token });
@@ -114,7 +129,6 @@ export function syncNow({ interactive = false } = {}) {
       if (e instanceof AuthError) await chrome.storage.session.remove('auth');
       const error = e instanceof AuthError ? 'Google sign-in has expired. Sign in again.' : String(e?.message ?? e);
       await saveCloud({ error, running: false });
-      if (interactive) throw e;
       return { state: 'error', error };
     }
   })().finally(() => {

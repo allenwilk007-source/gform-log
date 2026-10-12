@@ -102,3 +102,8 @@ test('sharing errors say what to fix', async () => {
   assert.match(explainSharingError('Google Drive answered 403.', uri), /Google Drive API/);
   assert.equal(explainSharingError('Something new', uri), 'Something new');
 });
+
+test('an orphaned sign-in window is explained', async () => {
+  const { explainSharingError } = await import('../extension/src/cloud.js');
+  assert.match(explainSharingError('Google sign-in did not finish. Only one web auth flow is allowed at a time.', 'u'), /still open/);
+});

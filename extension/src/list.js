@@ -2,7 +2,7 @@ import { explainSharingError } from './cloud.js';
 import { formLink, recordsFromHistory, takeoutHistoryItems, toCsv } from './forms.js';
 import { ago, buildView } from './view.js';
 import { clearAll, deviceName, loadAll, loadCheckRun, loadStatus, setDeviceName, syncProblem, upsert } from './store.js';
-import { loadCloud, setClientId } from './sync.js';
+import { hasFreshToken, loadCloud, setClientId, signIn } from './sync.js';
 
 const $ = (id) => document.getElementById(id);
 /** Builds an element. Text goes in through textContent only, never as HTML. */
@@ -205,25 +205,30 @@ function cloudMsg(text, kind = 'error') {
   $('cloud-msg').textContent = text ?? '';
 }
 
-const syncWith = (interactive) => async (e) => {
+/** Signs in here first if this browser has no live token, then has the background worker sync. */
+async function signInAndSync(e) {
   const button = e.currentTarget;
   button.disabled = true;
-  cloudMsg(interactive && !cloud?.email ? 'Opening Google sign-in in a new window…' : 'Syncing…', 'info');
   try {
-    const r = await chrome.runtime.sendMessage({ type: 'sync', interactive });
+    if (!(await hasFreshToken())) {
+      cloudMsg('Opening Google sign-in in a new window…', 'info');
+      await signIn();
+    }
+    cloudMsg('Syncing…', 'info');
+    const r = await chrome.runtime.sendMessage({ type: 'sync' });
     if (r?.error) throw new Error(r.error);
+    if (r?.state === 'signed-out') throw new Error('Sign-in did not finish. Check the client ID, then try again.');
     cloudMsg('');
-    if (r?.state === 'synced') notice(`Synced. The shared list has ${r.forms} form(s).`);
-    else if (r?.state === 'signed-out') cloudMsg('Sign-in did not start. Check the client ID, then try again.');
+    notice(`Synced. The shared list has ${r.forms} form(s).`);
   } catch (err) {
     cloudMsg(explainSharingError(err?.message ?? err, chrome.identity.getRedirectURL()));
   } finally {
     button.disabled = false;
     await refresh();
   }
-};
-$('signin').addEventListener('click', syncWith(true));
-$('sync').addEventListener('click', syncWith(true));
+}
+$('signin').addEventListener('click', signInAndSync);
+$('sync').addEventListener('click', signInAndSync);
 $('signout').addEventListener('click', (e) =>
   busy(e.currentTarget, async () => {
     await chrome.runtime.sendMessage({ type: 'signOut' });

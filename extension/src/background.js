@@ -102,7 +102,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
   const answer = (p) => p.then(reply, (e) => reply({ error: String(e?.message ?? e) }));
   if (msg?.type === 'scan') return answer(scanHistory(msg.since ?? 0)), true;
   if (msg?.type === 'check') return answer(runCheck('button')), true;
-  if (msg?.type === 'sync') return answer(syncNow({ interactive: Boolean(msg.interactive) })), true;
+  if (msg?.type === 'sync') return answer(syncNow()), true;
   if (msg?.type === 'signOut') return answer(signOut()), true;
   return false;
 });
