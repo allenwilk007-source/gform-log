@@ -1,6 +1,8 @@
+import { explainSharingError } from './cloud.js';
 import { formLink, recordsFromHistory, takeoutHistoryItems, toCsv } from './forms.js';
 import { ago, buildView } from './view.js';
 import { clearAll, deviceName, loadAll, loadCheckRun, loadStatus, setDeviceName, syncProblem, upsert } from './store.js';
+import { hasFreshToken, loadCloud, setClientId, signIn } from './sync.js';
 
 const $ = (id) => document.getElementById(id);
 /** Builds an element. Text goes in through textContent only, never as HTML. */
@@ -13,6 +15,8 @@ function el(tag, props = {}, ...children) {
 let records = new Map();
 let status = {};
 let checkRun = null;
+let cloud = null;
+let editingClient = false;
 let filter = 'all';
 
 function notice(text) {
@@ -57,6 +61,33 @@ const EMPTY = {
   closed: 'No closed forms.',
 };
 
+function renderCloud() {
+  const signedIn = Boolean(cloud.email);
+  const stage = signedIn ? 'on' : cloud.clientId && !editingClient ? 'signin' : 'setup';
+  $('cloud-setup').hidden = stage !== 'setup';
+  $('cloud-signin').hidden = stage !== 'signin';
+  $('cloud-on').hidden = stage !== 'on';
+  $('redirect').textContent = chrome.identity.getRedirectURL();
+  if (stage === 'setup' && !$('client-id').value) $('client-id').value = cloud.clientId;
+
+  const line = $('cloud-line');
+  line.className = '';
+  $('cloud-open').hidden = signedIn && !cloud.error;
+  if (!signedIn) {
+    $('cloud-text').textContent = 'Not shared with your other browsers yet.';
+    $('cloud-open').textContent = 'Set up';
+  } else if (cloud.error) {
+    line.className = 'warn';
+    $('cloud-text').textContent = `Sharing stopped: ${cloud.error}`;
+    $('cloud-open').textContent = 'Fix';
+  } else {
+    line.className = 'ok';
+    $('cloud-text').textContent = cloud.running ? 'Syncing with your other browsers…' : `Shared through Google Drive. Synced ${ago(cloud.lastSync) || 'not yet'}.`;
+  }
+  $('cloud-status').textContent = `Signed in as ${cloud.email}.` + (cloud.lastSync ? ` Last synced ${ago(cloud.lastSync)}.` : '') + (cloud.error ? ` ${cloud.error}` : '');
+  $('sync').disabled = Boolean(cloud.running);
+}
+
 function render() {
   const { rows, counts } = buildView(records, status, { filter, query: $('q').value, showEditor: $('showEditor').checked });
   for (const b of document.querySelectorAll('[data-filter]')) b.setAttribute('aria-pressed', String(b.dataset.filter === filter));
@@ -67,10 +98,11 @@ function render() {
   $('checked').textContent = statusLine();
   $('check').disabled = Boolean(checkRun?.running);
   $('check').textContent = checkRun?.running ? 'Checking…' : 'Check now';
+  renderCloud();
 }
 
 async function refresh() {
-  [records, status, checkRun] = await Promise.all([loadAll(), loadStatus(), loadCheckRun()]);
+  [records, status, checkRun, cloud] = await Promise.all([loadAll(), loadStatus(), loadCheckRun(), loadCloud()]);
   const problem = await syncProblem();
   if (problem) notice(`Some forms are kept only in this browser because sync storage is full: ${problem}`);
   render();
@@ -146,6 +178,63 @@ $('clear').addEventListener('click', (e) =>
 );
 
 $('device').addEventListener('change', (e) => setDeviceName(e.target.value));
+
+$('cloud-open').addEventListener('click', () => {
+  $('more').open = true;
+  $('cloud-h').scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+$('save-client').addEventListener('click', async () => {
+  try {
+    await setClientId($('client-id').value);
+    editingClient = false;
+    cloudMsg('Saved. Now sign in with Google.', 'info');
+    notice('Saved. Now sign in with Google.');
+  } catch (err) {
+    cloudMsg(String(err?.message ?? err));
+  }
+  await refresh();
+});
+$('change-client').addEventListener('click', () => {
+  editingClient = true;
+  renderCloud();
+});
+/** A message inside the sharing panel, where the person who just clicked is looking. */
+function cloudMsg(text, kind = 'error') {
+  $('cloud-msg').hidden = !text;
+  $('cloud-msg').className = `cloud-msg ${kind === 'info' ? 'info' : ''}`;
+  $('cloud-msg').textContent = text ?? '';
+}
+
+/** Signs in here first if this browser has no live token, then has the background worker sync. */
+async function signInAndSync(e) {
+  const button = e.currentTarget;
+  button.disabled = true;
+  try {
+    if (!(await hasFreshToken())) {
+      cloudMsg('Google sign-in is open in a new window. If you cannot see it, look on the taskbar: it may be behind this one. Finish it there.', 'info');
+      await signIn();
+    }
+    cloudMsg('Syncing…', 'info');
+    const r = await chrome.runtime.sendMessage({ type: 'sync' });
+    if (r?.error) throw new Error(r.error);
+    if (r?.state === 'signed-out') throw new Error('Sign-in did not finish. Check the client ID, then try again.');
+    cloudMsg('');
+    notice(`Synced. The shared list has ${r.forms} form(s).`);
+  } catch (err) {
+    cloudMsg(explainSharingError(err?.message ?? err, chrome.identity.getRedirectURL()));
+  } finally {
+    button.disabled = false;
+    await refresh();
+  }
+}
+$('signin').addEventListener('click', signInAndSync);
+$('sync').addEventListener('click', signInAndSync);
+$('signout').addEventListener('click', (e) =>
+  busy(e.currentTarget, async () => {
+    await chrome.runtime.sendMessage({ type: 'signOut' });
+    notice('Signed out. This browser keeps its own list but no longer shares it.');
+  }),
+);
 chrome.storage.onChanged.addListener(() => refresh());
 
 $('device').value = await deviceName();

@@ -67,6 +67,21 @@ export async function clearAll() {
   const [sync, local] = await Promise.all([chrome.storage.sync.get(null), chrome.storage.local.get(null)]);
   await chrome.storage.sync.remove(Object.keys(sync).filter((k) => k.startsWith(PREFIX)));
   await chrome.storage.local.remove([...Object.keys(local).filter((k) => k.startsWith(PREFIX)), SYNC_FULL, 'status', 'checkRun']);
+  // Remembered so the shared list in Google Drive forgets these forms too, in every browser.
+  await chrome.storage.local.set({ clearedAt: Date.now() });
+}
+
+export async function loadClearedAt() {
+  return (await chrome.storage.local.get('clearedAt')).clearedAt ?? 0;
+}
+
+/** Applies a "Forget everything" made in another browser: drops every form last seen before it. */
+export async function forgetBefore(clearedAt) {
+  const [sync, local] = await Promise.all([chrome.storage.sync.get(null), chrome.storage.local.get(null)]);
+  const stale = (area) => Object.entries(area).filter(([k, v]) => k.startsWith(PREFIX) && (v?.l || 0) <= clearedAt).map(([k]) => k);
+  await chrome.storage.sync.remove(stale(sync));
+  await chrome.storage.local.remove(stale(local));
+  await chrome.storage.local.set({ clearedAt });
 }
 
 export async function loadStatus() {
