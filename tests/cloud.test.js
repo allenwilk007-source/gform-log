@@ -105,5 +105,5 @@ test('sharing errors say what to fix', async () => {
 
 test('an orphaned sign-in window is explained', async () => {
   const { explainSharingError } = await import('../extension/src/cloud.js');
-  assert.match(explainSharingError('Google sign-in did not finish. Only one web auth flow is allowed at a time.', 'u'), /still open/);
+  assert.match(explainSharingError('Google sign-in did not finish. Only one web auth flow is allowed at a time.', 'u'), /still open.*chrome:\/\/restart/);
 });

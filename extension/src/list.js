@@ -211,7 +211,7 @@ async function signInAndSync(e) {
   button.disabled = true;
   try {
     if (!(await hasFreshToken())) {
-      cloudMsg('Opening Google sign-in in a new window…', 'info');
+      cloudMsg('Google sign-in is open in a new window. If you cannot see it, look on the taskbar: it may be behind this one. Finish it there.', 'info');
       await signIn();
     }
     cloudMsg('Syncing…', 'info');

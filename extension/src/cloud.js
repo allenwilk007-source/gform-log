@@ -84,7 +84,9 @@ export function explainSharingError(message, redirectUri) {
   if (/only one web auth flow/i.test(m)) {
     return (
       'A Google sign-in window from an earlier attempt is still open. Find it (it may be behind this window or ' +
-      'on the taskbar), read what it says, then close it and try again. If you cannot find it, restart the browser.'
+      'on the taskbar), read what it says, then close it and try again. If you cannot find it, fully restart the ' +
+      'browser by typing chrome://restart (or edge://restart in Edge) in the address bar: closing the windows is ' +
+      'not enough on Windows, because the browser keeps running in the background.'
     );
   }
   if (/did not approve|cancel|closed/i.test(m)) {
