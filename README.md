@@ -4,7 +4,7 @@ Google has no list of the Google Forms you have answered. The Forms API only ope
 can edit, and the owner of a form holds its responses. This repo builds that list yourself, from the
 places a record actually exists: your browser.
 
-## Forms I Answered (Chrome / Edge / Brave extension)
+## Form History (Chrome / Edge / Brave extension)
 
 The extension lists every Google Form you have opened or submitted, and whether each one still
 accepts responses.
@@ -15,7 +15,9 @@ accepts responses.
   you reach the page Google shows after pressing Submit (or the "already responded" page).
 - **Every desktop browser.** Records are kept in the browser's sync storage, so every desktop Chrome
   signed in to the same Google account (with sync on) shows one merged list. Edge does the same
-  across Edge browsers signed in to one Microsoft account. Chrome and Edge do not share a list.
+  across Edge browsers signed in to one Microsoft account.
+- **Chrome and Edge together.** Sign in with Google in each browser, and they share one list through
+  a hidden file in your own Google Drive. See "Share between Chrome and Edge" below.
 - **Phones.** Phone browsers cannot run extensions. Import a Google Takeout export of your Chrome
   history (below) to add what your phone's synced Chrome history still holds.
 - **Open or closed, daily.** Once a day, starting a few minutes after install, it loads each form
@@ -82,6 +84,54 @@ Takeout only has what Chrome sync uploaded, so your phone's Chrome needs history
 above). Takeout names devices by an opaque id, shown as "Takeout ab12cd". Repeat the export
 whenever you want to bring the list up to date; importing the same file twice adds nothing twice.
 
+### Share between Chrome and Edge
+
+Chrome and Edge sync through different accounts, so on their own they keep separate lists. Signing
+in with Google in each browser makes them share one list, kept as a hidden file in your own Google
+Drive. There is no server to run.
+
+- **What it can reach:** only Drive's app-data folder. That is a hidden folder that only this
+  extension can see, so it cannot read, list or change any of your files.
+- **When it syncs:** a minute after anything changes, every 30 minutes, when the browser starts, and
+  when you press "Sync now".
+- **How it merges:** nothing is lost when two browsers sync at once. "Forget everything" in one
+  browser clears the others at their next sync.
+- **Where the sign-in lives:** in memory only, for an hour at a time. It renews quietly while you
+  stay signed in to Google in that browser.
+
+**One-time setup in Google Cloud (about 10 minutes).** Google requires every app that signs people
+in to have its own client ID. The project you made for form-board works, or create a new one.
+
+1. Open https://console.cloud.google.com and pick the project.
+2. Go to **APIs & Services › Library**, search for **Google Drive API**, and click **Enable**.
+3. Go to **Google Auth Platform** (called **OAuth consent screen** in some versions).
+   - If it asks you to get started, give the app a name, such as "Form History", and your email.
+     Choose **External**.
+   - Under **Data access**, click **Add or remove scopes**. Add
+     `https://www.googleapis.com/auth/drive.appdata`, which Google lists as "See, create, and delete
+     its own configuration data in your Google Drive".
+   - Under **Audience**, either add your Google address as a test user, or click **Publish app**.
+     While it is in testing, only test users can sign in.
+4. Go to **Clients › Create client**. Choose **Web application** and name it anything. Under
+   **Authorized redirect URIs**, add exactly:
+
+   ```
+   https://mganadollnpacccnbhcmnjcebjkcikek.chromiumapp.org/
+   ```
+
+   Click **Create** and copy the **Client ID**. You do not need the client secret; never paste it
+   anywhere.
+5. In the extension, open **More options**, paste the client ID under "Share this list between
+   Chrome and Edge", and click **Save**. Then click **Sign in with Google**.
+6. In Edge, do step 5 again. Edge does not receive Chrome's settings, so it needs the client ID once.
+
+After that, the line under "Check now" reads "Shared through Google Drive. Synced …" in both
+browsers. "Sign out" stops sharing. The browser keeps its own list, and the file in Drive stays for
+your other browsers.
+
+Not yet verified: this has been tested with two Chromium profiles against a fake Google Drive, but
+not yet with a real Google client ID or in a real Edge.
+
 ### What it stores, and where
 
 For each form: its title, the dates it was last seen, submitted and seen closed, and the names of the
@@ -97,7 +147,9 @@ list says so. "Forget everything" deletes the records from every synced browser.
 | history | read past visits to Google Forms |
 | webNavigation | catch the page after Submit even if history leaves it out |
 | storage | keep and sync the list |
-| alarms | run the open/closed check once a day |
+| alarms | run the open/closed check once a day, and sync every 30 minutes |
+| identity | open Google's sign-in window for sharing between browsers |
+| www.googleapis.com, oauth2.googleapis.com | read and write the shared file in Drive's app-data folder; sign out |
 | docs.google.com | read form titles, and load forms for the open/closed check |
 
 ### Known limits
@@ -131,8 +183,9 @@ python tools/find_forms_in_history.py
 ```bash
 npm install
 npm test               # unit tests for the parsing and merging logic
-npm run test:browser   # loads the extension into Chromium against fake Google pages
-npm run zip            # packs extension/ into forms-i-answered.zip
+npm run test:browser   # loads the extension into Chromium against fake Google pages, then runs two
+                       # browser profiles that share one list through a fake Google Drive
+npm run zip            # packs extension/ into form-history.zip
 ```
 
 GitHub Actions runs both test suites on every pull request and every push to main, and keeps the

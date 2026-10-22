@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Forms I Answered</title>
+  <title>Form History</title>
   <link rel="icon" href="icons/icon-32.png">
   <link rel="stylesheet" href="list.css">
 </head>
@@ -12,11 +12,14 @@
     <header class="top">
       <div class="brand">
         <img src="icons/icon-48.png" alt="" width="32" height="32">
-        <h1>Forms I Answered</h1>
+        <h1>Form History</h1>
       </div>
       <button id="check" class="primary">Check now</button>
     </header>
-    <p id="checked" class="status-line" aria-live="polite"></p>
+    <div class="status-lines">
+      <p id="checked" aria-live="polite"></p>
+      <p id="cloud-line" aria-live="polite"><span id="cloud-text"></span> <button id="cloud-open" class="link" hidden>Set up</button></p>
+    </div>
 
     <div class="bar">
       <nav class="tabs" aria-label="Show">
@@ -33,9 +36,43 @@
     <ul id="list" class="cards" aria-label="Forms"></ul>
     <p id="empty" class="empty" hidden></p>
 
-    <details class="more">
+    <details class="more" id="more">
       <summary>More options</summary>
       <div class="more-body">
+        <section class="cloud" aria-labelledby="cloud-h">
+          <h2 id="cloud-h">Share this list between Chrome and Edge</h2>
+          <p id="cloud-msg" class="cloud-msg" role="alert" hidden></p>
+          <div id="cloud-setup" hidden>
+            <p class="hint">
+              This needs a Google client ID, made once in Google Cloud. The README explains how, under
+              "Share between Chrome and Edge". When Google asks for a redirect URI, use
+              <code id="redirect"></code>
+            </p>
+            <div class="row">
+              <label class="field">Google client ID
+                <input id="client-id" placeholder="…apps.googleusercontent.com" spellcheck="false" autocomplete="off">
+              </label>
+              <button id="save-client">Save</button>
+            </div>
+          </div>
+          <div id="cloud-signin" hidden>
+            <p class="hint">
+              Sign in with Google in each browser. The extension can then see one hidden folder in your
+              Google Drive, which only it can use. It cannot see your other files.
+            </p>
+            <div class="row">
+              <button id="signin" class="primary">Sign in with Google</button>
+              <button id="change-client" class="link">Change client ID</button>
+            </div>
+          </div>
+          <div id="cloud-on" hidden>
+            <p id="cloud-status" class="hint"></p>
+            <div class="row">
+              <button id="sync">Sync now</button>
+              <button id="signout">Sign out</button>
+            </div>
+          </div>
+        </section>
         <div class="more-actions">
           <button id="rescan">Rescan this browser's history</button>
           <label class="button">Import Google Takeout history…
@@ -48,9 +85,9 @@
           <input id="device" maxlength="40">
         </label>
         <p class="hint">
-          The list syncs to every Chrome signed in to your Google account with sync on, and separately
-          between Edge browsers on one Microsoft account. Phones cannot run extensions: see
-          "Add your phone" in the README.
+          Without Google Drive sharing, the list still syncs between Chrome browsers on one Google
+          account, and separately between Edge browsers on one Microsoft account. Phones cannot run
+          extensions: see "Add your phone" in the README.
         </p>
         <button id="clear" class="danger">Forget everything</button>
       </div>
