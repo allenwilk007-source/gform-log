@@ -1,5 +1,6 @@
 import { explainSharingError } from './cloud.js';
 import { formLink, recordsFromHistory, takeoutHistoryItems, toCsv } from './forms.js';
+import { isJobKey, jobLabel } from './jobs.js';
 import { ago, buildView } from './view.js';
 import { clearAll, deviceName, loadAll, loadCheckRun, loadStatus, setDeviceName, syncProblem, upsert } from './store.js';
 import { hasFreshToken, loadCloud, setClientId, signIn } from './sync.js';
@@ -25,14 +26,21 @@ function notice(text) {
 }
 
 function card({ id, rec, submitted, open }) {
+  const job = isJobKey(id) ? jobLabel(id) : null;
   const title = el('a', {
     className: rec.t ? 'title' : 'title untitled',
     href: formLink(id, rec),
     target: '_blank',
     rel: 'noopener',
-    textContent: rec.t || 'Untitled form',
+    textContent: rec.t || (job ? `Application at ${job.company}` : 'Untitled form'),
   });
-  const seen = [rec.l > 1 && `Last opened ${ago(rec.l)}`, (rec.d ?? []).join(', ')].filter(Boolean).join(' · ');
+  const seen = [
+    job ? job.site : 'Google Forms',
+    rec.l > 1 && `${job ? 'Applied' : 'Last opened'} ${ago(rec.l)}`,
+    (rec.d ?? []).join(', '),
+  ]
+    .filter(Boolean)
+    .join(' · ');
   const submittedMark = el('span', {
     className: `mark ${submitted ? 'submitted' : 'not-submitted'}`,
     textContent: submitted ? 'Submitted' : 'Not submitted',

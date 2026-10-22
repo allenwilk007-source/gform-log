@@ -1,4 +1,5 @@
 // Pure logic: no chrome.* calls here, so it runs under `node --test` as well as in the extension.
+import { cleanJobTitle, isJobKey, jobLink, parseJobUrl } from './jobs.js';
 
 // docs.google.com/forms/d/e/<published id>/viewform       a respondent link
 // docs.google.com/forms/d/e/<published id>/formResponse   the page after pressing Submit
@@ -29,13 +30,18 @@ export function parseFormUrl(url) {
   };
 }
 
-/** The link to open a form as a respondent, or to edit it when that is all that was seen. */
+/** The link to open a form as a respondent (or to edit it, when that is all that was seen), or a job posting. */
 export function formLink(id, rec) {
+  if (isJobKey(id)) return jobLink(id);
   if (rec.p) return `https://docs.google.com/forms/d/e/${id}/viewform`;
   return `https://docs.google.com/forms/d/${id}/${rec.e ? 'edit' : 'viewform'}`;
 }
 
-const GENERIC_TITLES = new Set(['', 'google forms', 'google forms: sign-in', 'sign in - google accounts', 'untitled form']);
+const GENERIC_TITLES = new Set([
+  '', 'google forms', 'google forms: sign-in', 'sign in - google accounts', 'untitled form',
+  'thank you', 'thanks', 'thank you!', 'thank you for applying', 'thank you for applying!',
+  'application submitted', 'application received', 'confirmation', 'jobs',
+]);
 
 export function cleanTitle(title) {
   const t = String(title ?? '')
@@ -95,14 +101,27 @@ export function sameEnough(prev, next) {
   );
 }
 
-/** History items ({url, title, lastVisitTime, device?}) to a Map of form id -> record. */
+/** A sent job application. `at` is when it was sent. */
+export function recordFromApplication(title, at, device) {
+  return { t: cleanTitle(cleanJobTitle(title)), l: at || 0, s: at || 1, c: 0, p: true, e: false, d: device ? [device] : [] };
+}
+
+/**
+ * History items ({url, title, lastVisitTime, device?}) to a Map of key -> record: every Google Form,
+ * and every job application whose address shows it was sent.
+ */
 export function recordsFromHistory(items, device) {
   const out = new Map();
   for (const item of items) {
+    const at = Math.round(item.lastVisitTime || 0);
+    const who = item.device ?? device;
     const parsed = parseFormUrl(item.url);
-    if (!parsed) continue;
-    const rec = recordFromVisit(parsed, item.title, Math.round(item.lastVisitTime || 0), item.device ?? device);
-    out.set(parsed.id, mergeRecords(out.get(parsed.id), rec));
+    if (parsed) {
+      out.set(parsed.id, mergeRecords(out.get(parsed.id), recordFromVisit(parsed, item.title, at, who)));
+      continue;
+    }
+    const applied = parseJobUrl(item.url);
+    if (applied?.submitted) out.set(applied.key, mergeRecords(out.get(applied.key), recordFromApplication(item.title, at, who)));
   }
   return out;
 }

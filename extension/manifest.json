@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Form History",
-  "version": "0.4.0",
-  "description": "Lists the Google Forms you have opened or submitted, and whether each is still open. Chrome and Edge can share one list through your own Google Drive.",
+  "version": "0.5.0",
+  "description": "Lists the Google Forms and job applications (Greenhouse, Lever, Ashby) you have opened or sent, and whether each is still open. Chrome and Edge can share one list through your own Google Drive.",
   "icons": {
     "16": "icons/icon-16.png",
     "32": "icons/icon-32.png",
@@ -20,6 +20,13 @@
   ],
   "host_permissions": [
     "https://docs.google.com/*",
+    "https://boards.greenhouse.io/*",
+    "https://job-boards.greenhouse.io/*",
+    "https://boards.eu.greenhouse.io/*",
+    "https://job-boards.eu.greenhouse.io/*",
+    "https://jobs.lever.co/*",
+    "https://jobs.eu.lever.co/*",
+    "https://jobs.ashbyhq.com/*",
     "https://www.googleapis.com/*",
     "https://oauth2.googleapis.com/*"
   ],
@@ -27,6 +34,24 @@
     "service_worker": "src/background.js",
     "type": "module"
   },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://boards.greenhouse.io/*",
+        "https://job-boards.greenhouse.io/*",
+        "https://boards.eu.greenhouse.io/*",
+        "https://job-boards.eu.greenhouse.io/*",
+        "https://jobs.lever.co/*",
+        "https://jobs.eu.lever.co/*",
+        "https://jobs.ashbyhq.com/*"
+      ],
+      "js": [
+        "content/apply.js"
+      ],
+      "all_frames": true,
+      "run_at": "document_idle"
+    }
+  ],
   "action": {
     "default_title": "Form History",
     "default_icon": {

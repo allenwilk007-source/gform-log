@@ -34,6 +34,29 @@ have not submitted come first, because those are the ones still worth acting on.
 importing, exporting, renaming this browser and showing forms you made yourself are under
 "More options".
 
+### Job applications (Greenhouse, Lever, Ashby)
+
+The list also records job applications you send on three common hiring sites. A posting you only
+read is not listed; an application appears once it is sent, marked Submitted, with the site's name.
+
+| Site | How a sent application is spotted | Confirmed on the live site? |
+|---|---|---|
+| Greenhouse | the address ends in `/confirmation` | yes, it shows up across many companies' boards |
+| Lever | the address ends in `/thanks` | not yet |
+| Ashby | a thank-you message appears after you press Submit | not yet |
+| Greenhouse inside a company's own careers page | a thank-you message, as for Ashby | not yet |
+
+The thank-you check only counts a message that appears after you press a Submit or Apply button, and
+only if it is new: a page that already says "thank you for your interest", followed by a Submit that
+fails, is not counted. Past Greenhouse and Lever applications are also found in your history, since
+their addresses show they were sent.
+
+"Check now" also checks each posting: Open while it is still up, Closed once it is gone. Ashby builds
+its pages in the browser, so its postings show as Unclear.
+
+If an application you sent does not appear, save the page shown after Submit (Ctrl+S) and send it in,
+so the matching rule can be fixed.
+
 ### Install
 
 1. Download this repo (Code › Download ZIP) and unzip it.
@@ -151,6 +174,7 @@ list says so. "Forget everything" deletes the records from every synced browser.
 | identity | open Google's sign-in window for sharing between browsers |
 | www.googleapis.com, oauth2.googleapis.com | read and write the shared file in Drive's app-data folder; sign out |
 | docs.google.com | read form titles, and load forms for the open/closed check |
+| Greenhouse, Lever and Ashby job sites | spot a sent application, and check whether a posting is still up |
 
 ### Known limits
 
@@ -183,8 +207,9 @@ python tools/find_forms_in_history.py
 ```bash
 npm install
 npm test               # unit tests for the parsing and merging logic
-npm run test:browser   # loads the extension into Chromium against fake Google pages, then runs two
-                       # browser profiles that share one list through a fake Google Drive
+npm run test:browser   # loads the extension into Chromium against fake Google pages, runs two
+                       # browser profiles that share one list through a fake Google Drive, and
+                       # applies to jobs on fake Greenhouse, Lever and Ashby pages
 npm run zip            # packs extension/ into form-history.zip
 ```
 

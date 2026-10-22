@@ -1,6 +1,7 @@
 // The open/closed check, shared by the daily alarm and the "Check which are still open" button.
 // It runs in the background worker either way, so closing the list page does not stop it.
 import { formLink, statusFromPage } from './forms.js';
+import { isJobKey, jobStatus } from './jobs.js';
 
 export const DAILY_ALARM = 'daily-open-check';
 export const DAY_MINUTES = 24 * 60;
@@ -15,6 +16,7 @@ export function idsToCheck(records) {
 export async function checkOne(id, rec, fetchFn = fetch) {
   try {
     const res = await fetchFn(formLink(id, rec), { credentials: 'include' });
+    if (isJobKey(id)) return jobStatus(id, res.url, res.status);
     if (res.status === 404) return 'deleted';
     return statusFromPage(res.url, await res.text());
   } catch {
