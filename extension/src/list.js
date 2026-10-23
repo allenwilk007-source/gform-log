@@ -75,6 +75,8 @@ function renderCloud() {
   $('cloud-setup').hidden = stage !== 'setup';
   $('cloud-signin').hidden = stage !== 'signin';
   $('cloud-on').hidden = stage !== 'on';
+  // With a client ID built in, people never need to see or change it.
+  $('change-client').hidden = Boolean(cloud.builtInClient);
   $('redirect').textContent = chrome.identity.getRedirectURL();
   if (stage === 'setup' && !$('client-id').value) $('client-id').value = cloud.clientId;
 

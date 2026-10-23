@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Form History privacy policy</title>
+  <link rel="icon" href="icon.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+  <header><img src="icon.png" alt=""><h1>Privacy policy</h1></header>
+  <p class="lead">Form History browser extension. Effective 23 October 2026.</p>
+
+  <p>Form History lists the Google Forms you have opened or submitted and the job applications you have sent, so you
+  can find them again. This page says exactly what it reads, what it keeps, where that goes, and how to delete it.
+  The source code is public at <a href="https://github.com/allenwilk007-source/gform-log">github.com/allenwilk007-source/gform-log</a>.</p>
+
+  <h2>What it reads</h2>
+  <ul>
+    <li><strong>Browser history.</strong> The addresses and titles of Google Forms pages and of pages on Greenhouse,
+    Lever and Ashby job sites. Every other page in your history is skipped without being stored.</li>
+    <li><strong>Pages as you browse them,</strong> but only on Google Forms and those three job sites: the address and
+    title, to record a form you open or an application you send.</li>
+    <li><strong>Page text on those job sites, only just after you press Submit or Apply,</strong> to see whether a
+    thank-you message appeared. The text is checked in your browser and never stored or sent anywhere.</li>
+    <li><strong>A Google Takeout file,</strong> only if you choose to import one. It is read in your browser and only the
+    Google Forms and job entries are kept.</li>
+  </ul>
+
+  <h2>What it keeps</h2>
+  <p>For each form or application: its title, the link to it, when you last opened it, when you submitted it, whether
+  it was seen open or closed, and the names of your browsers that saw it. It never keeps your answers, the contents of
+  forms, résumés, or anything you typed.</p>
+
+  <h2>Where it is kept</h2>
+  <ul>
+    <li><strong>In your browser,</strong> in the extension's own storage.</li>
+    <li><strong>In your browser's own sync,</strong> which copies extension data between browsers signed in to the same
+    Google account (Chrome) or Microsoft account (Edge). This is run by Google or Microsoft under their own terms.</li>
+    <li><strong>In your Google Drive, only if you click "Sign in with Google".</strong> The list is saved as one file in
+    Drive's hidden app-data folder, which only Form History can see. It cannot see, open or change any of your other
+    files.</li>
+  </ul>
+  <p>There is no Form History server. The developer never receives your list, your history or your Google account
+  details.</p>
+
+  <h2>What it sends, and to whom</h2>
+  <table>
+    <tr><th>To</th><th>What, and why</th></tr>
+    <tr><td>Google Forms and the three job sites</td><td>A normal page request for each item in your list, once a day or
+    when you press "Check now", to see whether the form still takes responses or the posting is still up. It is sent as
+    you, with your existing sign-in, just as if you opened the page.</td></tr>
+    <tr><td>Google sign-in and Google Drive</td><td>Only if you sign in: to get permission for the app-data folder and to
+    read and write the one shared file.</td></tr>
+  </table>
+  <p>Nothing else. No analytics, no advertising, no crash reporting.</p>
+
+  <h2>Google user data</h2>
+  <p>When you sign in, Form History asks Google for one permission:
+  <code>https://www.googleapis.com/auth/drive.appdata</code>, which lets it keep its own file in a hidden folder of your
+  Drive. It uses that permission only to store and sync your Form History list between your browsers. It does not
+  transfer that data to anyone, use it for advertising, sell it, or let any person read it.</p>
+  <p>Form History's use and transfer to any other app of information received from Google APIs will adhere to the
+  <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User Data Policy</a>,
+  including the Limited Use requirements.</p>
+  <p>The sign-in token is kept in memory only, never on disk, and lasts one hour. "Sign out" revokes it.</p>
+
+  <h2>Deleting your data</h2>
+  <ul>
+    <li><strong>Forget everything</strong> (under More options) deletes the list from this browser, from your other
+    synced browsers, and from the shared Drive file.</li>
+    <li><strong>Sign out</strong> stops sharing and revokes Google access.</li>
+    <li><strong>Removing the extension</strong> deletes its data from that browser.</li>
+    <li><strong>The Drive file</strong> can also be deleted in Google Drive: Settings, then Manage apps, then Form History,
+    then Options, then Delete hidden app data. You can withdraw access at
+    <a href="https://myaccount.google.com/permissions">myaccount.google.com/permissions</a>.</li>
+  </ul>
+
+  <h2>Sale of data</h2>
+  <p>Your data is not sold, rented or shared with anyone, and is not used to decide creditworthiness or for lending.</p>
+
+  <h2>Changes</h2>
+  <p>If this policy changes, the new version will be posted on this page with a new date. A change that collects more
+  data will ask for your permission first.</p>
+
+  <h2>Contact</h2>
+  <p><a href="https://github.com/allenwilk007-source/gform-log/issues">Open an issue on GitHub.</a></p>
+
+  <footer><a href="index.html">Form History home</a></footer>
+</main>
+</body>
+</html>
