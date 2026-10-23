@@ -114,9 +114,19 @@ try {
   assert.ok(!c.some((x) => /Hooli|Designer/.test(x.title)), 'neither the failed submit nor the viewed posting');
   assert.ok(c.every((x) => x.marks[0] === 'Submitted'), 'all marked submitted');
 
+  // The "Tracks" row counts each source, and clicking one filters the list.
+  const chips = await list.$$eval('#sources .source', (bs) => bs.map((b) => b.textContent));
+  assert.deepEqual(chips, ['Everything4', 'Google Forms0', 'Greenhouse2', 'Lever1', 'Ashby1']);
+  await list.click('#sources .source[data-src="gh"]');
+  assert.deepEqual((await cards()).map((x) => x.title).sort(), ['Careers at Initech', 'Data Analyst at Acme']);
+  await list.click('#sources .source[data-src="forms"]');
+  assert.match(await list.$eval('#empty', (n) => n.textContent), /^No Google Forms yet\./);
+  await list.click('#sources .source:first-child');
+  c = await cards();
+
   // Is each posting still up?
   await list.click('#check');
-  await list.waitForFunction(() => /^Checked \d+ form/.test(document.getElementById('notice').textContent), null, { timeout: 30_000 });
+  await list.waitForFunction(() => /^Checked \d+ items?\./.test(document.getElementById('notice').textContent), null, { timeout: 30_000 });
   c = await cards();
   console.log('after check', c.map((x) => [x.title, x.marks[1]]));
   assert.equal(by('Data Analyst at Acme').marks[1], 'Open');

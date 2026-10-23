@@ -1,7 +1,7 @@
 import { explainSharingError } from './cloud.js';
 import { formLink, recordsFromHistory, takeoutHistoryItems, toCsv } from './forms.js';
 import { isJobKey, jobLabel } from './jobs.js';
-import { ago, buildView } from './view.js';
+import { ago, buildView, NOT_YET, sourceOf, SOURCES } from './view.js';
 import { clearAll, deviceName, loadAll, loadCheckRun, loadStatus, setDeviceName, syncProblem, upsert } from './store.js';
 import { hasFreshToken, loadCloud, setClientId, signIn } from './sync.js';
 
@@ -19,6 +19,7 @@ let checkRun = null;
 let cloud = null;
 let editingClient = false;
 let filter = 'all';
+let source = 'all';
 
 function notice(text) {
   $('notice').hidden = !text;
@@ -34,25 +35,53 @@ function card({ id, rec, submitted, open }) {
     rel: 'noopener',
     textContent: rec.t || (job ? `Application at ${job.company}` : 'Untitled form'),
   });
-  const seen = [
-    job ? job.site : 'Google Forms',
-    rec.l > 1 && `${job ? 'Applied' : 'Last opened'} ${ago(rec.l)}`,
-    (rec.d ?? []).join(', '),
-  ]
-    .filter(Boolean)
-    .join(' · ');
+  const seen = [rec.l > 1 && `${job ? 'Applied' : 'Last opened'} ${ago(rec.l)}`, (rec.d ?? []).join(', ')].filter(Boolean).join(' · ');
+  const meta = el('div', { className: 'meta' }, el('span', { className: 'site', textContent: job ? job.site : 'Google Forms' }), seen ? ` · ${seen}` : '');
   const submittedMark = el('span', {
     className: `mark ${submitted ? 'submitted' : 'not-submitted'}`,
     textContent: submitted ? 'Submitted' : 'Not submitted',
     title: submitted && rec.s > 1 ? `Submitted ${new Date(rec.s).toLocaleString()}` : '',
   });
   const openMark = el('span', { className: `mark ${open.key}`, textContent: open.label, title: open.hint });
-  return el(
+  const item = el(
     'li',
     { className: 'card' },
-    el('div', { className: 'card-main' }, title, el('div', { className: 'meta', textContent: seen })),
+    el('div', { className: 'card-main' }, title, meta),
     el('div', { className: 'marks' }, submittedMark, openMark),
   );
+  item.dataset.src = sourceOf(id);
+  return item;
+}
+
+/** The "Tracks" row: one button per source, with its count, that filters the list. */
+function renderSources(sourceCounts) {
+  const button = (id, name, n) => {
+    const b = el('button', { className: 'source', type: 'button' });
+    if (id !== 'all') {
+      b.dataset.src = id;
+      b.append(el('span', { className: 'dot' }));
+    }
+    b.append(name, el('span', { className: 'n', textContent: String(n) }));
+    b.setAttribute('aria-pressed', String(source === id));
+    b.addEventListener('click', () => {
+      source = id;
+      render();
+    });
+    return b;
+  };
+  $('sources').replaceChildren(button('all', 'Everything', sourceCounts.all), ...SOURCES.map((s) => button(s.id, s.name, sourceCounts[s.id])));
+  $('not-yet').textContent = `Not tracked yet: ${NOT_YET.join(', ')}.`;
+}
+
+function emptyMessage() {
+  if ($('q').value.trim()) return 'Nothing matches your search.';
+  const s = SOURCES.find((x) => x.id === source);
+  if (s && filter === 'all') {
+    return s.id === 'forms'
+      ? 'No Google Forms yet. Open any form (docs.google.com/forms) and it appears here.'
+      : `No ${s.name} applications yet. Apply for a job on ${s.where} and it appears here once sent. Postings you only read are not listed.`;
+  }
+  return EMPTY[filter];
 }
 
 function statusLine() {
@@ -63,7 +92,7 @@ function statusLine() {
 }
 
 const EMPTY = {
-  all: 'No Google Forms found yet. Open a form in this browser and it appears here.',
+  all: 'Nothing yet. Open a Google Form, or apply for a job on Greenhouse, Lever or Ashby, and it appears here.',
   open: 'No open forms. Forms show here once a check finds them taking responses.',
   submitted: 'No submitted forms yet.',
   closed: 'No closed forms.',
@@ -99,12 +128,13 @@ function renderCloud() {
 }
 
 function render() {
-  const { rows, counts } = buildView(records, status, { filter, query: $('q').value, showEditor: $('showEditor').checked });
+  const { rows, counts, sourceCounts } = buildView(records, status, { filter, source, query: $('q').value, showEditor: $('showEditor').checked });
+  renderSources(sourceCounts);
   for (const b of document.querySelectorAll('[data-filter]')) b.setAttribute('aria-pressed', String(b.dataset.filter === filter));
   for (const c of document.querySelectorAll('[data-count]')) c.textContent = counts[c.dataset.count];
   $('list').replaceChildren(...rows.map(card));
   $('empty').hidden = rows.length > 0;
-  $('empty').textContent = $('q').value.trim() ? 'No forms match your search.' : EMPTY[filter];
+  $('empty').textContent = emptyMessage();
   $('checked').textContent = statusLine();
   $('check').disabled = Boolean(checkRun?.running);
   $('check').textContent = checkRun?.running ? 'Checking…' : 'Check now';
@@ -144,7 +174,7 @@ $('check').addEventListener('click', (e) =>
     // The background worker does the work, so it carries on if this tab is closed.
     const r = await chrome.runtime.sendMessage({ type: 'check' });
     if (r?.error) throw new Error(r.error);
-    notice(`Checked ${r.total} form(s).`);
+    notice(`Checked ${r.total} ${r.total === 1 ? 'item' : 'items'}.`);
   }),
 );
 
@@ -172,7 +202,7 @@ $('takeout').addEventListener('change', async (e) => {
 });
 
 $('csv').addEventListener('click', () => {
-  const { rows } = buildView(records, status, { filter, query: $('q').value, showEditor: $('showEditor').checked });
+  const { rows } = buildView(records, status, { filter, source, query: $('q').value, showEditor: $('showEditor').checked });
   const blob = new Blob([toCsv(rows.map((r) => [r.id, r.rec]))], { type: 'text/csv' });
   const a = el('a', { href: URL.createObjectURL(blob), download: 'google-forms.csv' });
   a.click();

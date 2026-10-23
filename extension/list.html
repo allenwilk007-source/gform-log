@@ -12,7 +12,10 @@
     <header class="top">
       <div class="brand">
         <img src="icons/icon-48.png" alt="" width="32" height="32">
-        <h1>Form History</h1>
+        <div>
+          <h1>Form History</h1>
+          <p class="tagline">Your Google Forms and job applications, in one list.</p>
+        </div>
       </div>
       <button id="check" class="primary">Check now</button>
     </header>
@@ -20,6 +23,12 @@
       <p id="checked" aria-live="polite"></p>
       <p id="cloud-line" aria-live="polite"><span id="cloud-text"></span> <button id="cloud-open" class="link" hidden>Set up</button></p>
     </div>
+
+    <section class="sources" aria-labelledby="sources-label">
+      <span id="sources-label" class="sources-label">Tracks</span>
+      <div id="sources" class="source-list"></div>
+      <p id="not-yet" class="not-yet"></p>
+    </section>
 
     <div class="bar">
       <nav class="tabs" aria-label="Show">
