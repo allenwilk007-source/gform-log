@@ -48,7 +48,7 @@ try {
 
   const list = await context.newPage();
   await list.goto(`chrome-extension://${extId}/list.html`);
-  await list.waitForFunction(() => /No Google Forms found yet/.test(document.getElementById('empty').textContent));
+  await list.waitForFunction(() => /^Nothing yet\./.test(document.getElementById('empty').textContent));
 
   // The daily open/closed check is scheduled on install.
   const alarm = await list.evaluate(() => chrome.alarms.get('daily-open-check'));
@@ -110,7 +110,7 @@ try {
 
   // The button runs the same check on demand.
   await list.click('#check');
-  await list.waitForFunction(() => /^Checked \d+ form/.test(document.getElementById('notice').textContent));
+  await list.waitForFunction(() => /^Checked \d+ items?\./.test(document.getElementById('notice').textContent));
   assert.equal((await list.evaluate(() => chrome.storage.local.get('checkRun'))).checkRun.trigger, 'button');
 
   // 4. Takeout import adds a phone's history.

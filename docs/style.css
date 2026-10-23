@@ -1,0 +1,20 @@
+:root { color-scheme: light dark; --bg: #f6f7f9; --card: #fff; --fg: #1d1f23; --muted: #5f6672; --line: #e2e5ea; --accent: #5b3cc4; }
+@media (prefers-color-scheme: dark) { :root { --bg: #17181b; --card: #212327; --fg: #e9eaed; --muted: #a2a8b3; --line: #33363c; --accent: #b6a3ff; } }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width: 760px; margin: 0 auto; padding: 40px 16px 64px; }
+header { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+header img { width: 40px; height: 40px; }
+h1 { margin: 0; font-size: 30px; letter-spacing: -.01em; }
+h2 { margin: 36px 0 8px; font-size: 20px; }
+p, li { color: var(--fg); }
+.lead { font-size: 18px; color: var(--muted); margin-top: 4px; }
+a { color: var(--accent); }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px 20px; margin: 16px 0; }
+.buttons { display: flex; flex-wrap: wrap; gap: 10px; margin: 20px 0; }
+.button { display: inline-block; padding: 10px 16px; border-radius: 8px; background: var(--accent); color: #fff; text-decoration: none; font-weight: 600; }
+.button.secondary { background: transparent; color: var(--accent); border: 1px solid var(--line); }
+small, .muted { color: var(--muted); }
+table { width: 100%; border-collapse: collapse; font-size: 15px; }
+th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+footer { margin-top: 48px; color: var(--muted); font-size: 14px; }

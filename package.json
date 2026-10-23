@@ -4,8 +4,9 @@
   "type": "module",
   "scripts": {
     "test": "node --test tests/*.test.js",
-    "test:browser": "node tests/browser.mjs && node tests/browser-sync.mjs",
-    "zip": "cd extension && zip -qr ../form-history.zip . -x '.*'"
+    "test:browser": "node tests/browser.mjs && node tests/browser-sync.mjs && node tests/browser-jobs.mjs",
+    "zip": "cd extension && zip -qr ../form-history.zip . -x '.*'",
+    "zip:store": "node tools/store-zip.mjs"
   },
   "devDependencies": {
     "playwright": "^1.56.1"
