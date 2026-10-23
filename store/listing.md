@@ -21,6 +21,8 @@ Paste these into the Developer Dashboard. Edge Add-ons asks for the same things.
 > • Past forms: on install it finds the forms already in your browser history. A Google Takeout export adds your phone's Chrome history.
 > • Filters for Open, Submitted and Closed, search, and CSV export.
 >
+> Form History is not affiliated with or endorsed by Google, Greenhouse, Lever or Ashby.
+>
 > Private by design: there is no Form History server. Your list stays in your browser and, if you sign in, in a hidden file in your own Google Drive that only this extension can open. No ads, no tracking, nothing sold. Open source: https://github.com/allenwilk007-source/gform-log
 
 **Category:** Productivity, then Workflow & Planning (or the closest Productivity category offered).
