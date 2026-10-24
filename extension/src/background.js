@@ -1,18 +1,46 @@
 import { checkAll, DAILY_ALARM, DAY_MINUTES } from './check.js';
+import { cleanDevice, fromChromeSync, mergeDevices, splitByOrigin, SYNCED_ID, SYNCED_NAME } from './devices.js';
 import { parseFormUrl, recordFromApplication, recordsFromHistory } from './forms.js';
 import { parseJobUrl } from './jobs.js';
-import { deviceName, loadAll, loadStatus, saveCheckRun, saveStatus, upsert } from './store.js';
+import { deviceName, loadAll, loadDevices, loadStatus, saveCheckRun, saveDevices, saveStatus, touchDevice, upsert } from './store.js';
 import { SYNC_ALARM, SYNC_EVERY_MINUTES, SYNC_SOON_ALARM, signOut, syncNow, syncSoon } from './sync.js';
 
 const DAY = 24 * 60 * 60 * 1000;
 
-/** Reads this browser's own history since `since` and stores every Google Form in it. */
+/**
+ * Reads history since `since` and stores every Google Form and sent application in it. With Chrome
+ * history sync on, that history includes visits made on the account's other devices, phones
+ * included; those are stored under SYNCED_NAME rather than this browser's name.
+ */
 export async function scanHistory(since = 0) {
   // An empty text query returns every page; filtering here is more reliable than Chrome's word search.
   const items = await chrome.history.search({ text: '', startTime: since, maxResults: 1_000_000 });
-  const records = recordsFromHistory(items, await deviceName());
+  const here = await deviceName();
+  const wanted = items.filter((i) => parseFormUrl(i.url) || parseJobUrl(i.url)?.submitted);
+  const split = [];
+  for (const item of wanted) split.push(...splitByOrigin(item, await chrome.history.getVisits({ url: item.url }).catch(() => []), here));
+  const records = recordsFromHistory(split, here);
+  const syncedAt = Math.max(0, ...split.filter((i) => i.device === SYNCED_NAME).map((i) => i.lastVisitTime || 0));
+  if (syncedAt) {
+    const entry = cleanDevice({ name: SYNCED_NAME, via: 'history-sync', seen: syncedAt });
+    await saveDevices(mergeDevices(await loadDevices(), { [SYNCED_ID]: entry }));
+  }
   const { written, local } = await upsert(records);
   return { scanned: items.length, forms: records.size, written, local };
+}
+
+/**
+ * Reads the account's other Chrome devices, phones included, from Chrome sync: each one's name and
+ * the tabs it has open. Forms and sent applications in those tabs join the list under that device.
+ * Chrome only knows this when "Open tabs" sync is on; other browsers may report nothing.
+ */
+export async function scanOtherDevices() {
+  await touchDevice();
+  if (!chrome.sessions?.getDevices) return { devices: 0, forms: 0 };
+  const { devices, records } = fromChromeSync(await chrome.sessions.getDevices().catch(() => []));
+  await saveDevices(mergeDevices(await loadDevices(), devices));
+  await upsert(records);
+  return { devices: Object.keys(devices).length, forms: records.size };
 }
 
 let checking = null;
@@ -71,15 +99,20 @@ async function pendingTitle(key) {
 chrome.runtime.onInstalled.addListener(({ reason }) => {
   if (reason === 'install') scanHistory(0);
   ensureAlarms();
+  scanOtherDevices();
 });
 chrome.runtime.onStartup.addListener(async () => {
   ensureAlarms();
   await scanHistory(Date.now() - 7 * DAY);
+  await scanOtherDevices();
   syncNow();
 });
 chrome.alarms.onAlarm.addListener((alarm) => {
-  if (alarm.name === DAILY_ALARM) runCheck('daily');
-  if (alarm.name === SYNC_ALARM || alarm.name === SYNC_SOON_ALARM) syncNow();
+  // Visits synced in from other devices fire no event, so history is read again on a timer: the last
+  // three days every half hour, and all of it once a day (a phone that was offline for a week).
+  if (alarm.name === DAILY_ALARM) scanHistory(0).finally(() => runCheck('daily'));
+  if (alarm.name === SYNC_ALARM) scanHistory(Date.now() - 3 * DAY).then(scanOtherDevices).finally(syncNow);
+  if (alarm.name === SYNC_SOON_ALARM) syncNow();
 });
 
 // Any change to the list here (a new form, a check result, "Forget everything") is shared a minute later.
@@ -138,6 +171,7 @@ chrome.action.onClicked.addListener(() => chrome.tabs.create({ url: chrome.runti
 chrome.runtime.onMessage.addListener((msg, sender, reply) => {
   const answer = (p) => p.then(reply, (e) => reply({ error: String(e?.message ?? e) }));
   if (msg?.type === 'scan') return answer(scanHistory(msg.since ?? 0)), true;
+  if (msg?.type === 'devices') return answer(scanOtherDevices()), true;
   if (msg?.type === 'check') return answer(runCheck('button')), true;
   if (msg?.type === 'sync') return answer(syncNow()), true;
   if (msg?.type === 'signOut') return answer(signOut()), true;

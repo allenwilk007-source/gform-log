@@ -34,6 +34,43 @@ have not submitted come first, because those are the ones still worth acting on.
 importing, exporting, renaming this browser and showing forms you made yourself are under
 "More options".
 
+### Devices
+
+The **Devices** row lists every browser and device the list knows about, with how many items each
+saw. Click one to show only what was seen there. A device gets there in one of four ways:
+
+| shown as | what it is | how it gets there |
+|---|---|---|
+| This browser | the browser you are looking at | always |
+| Form History installed | another browser running the extension | it reports in through Chrome sync (Chrome to Chrome) or the shared Google Drive file (any browser that signed in) |
+| Open tabs via Chrome sync | any other Chrome on the account, phones included, even without the extension | Chrome's own list of synced devices (`chrome.sessions`). Forms and sent applications in its **open tabs** are added under its name |
+| History via Chrome sync ("Synced from other devices") | every other Chrome on the account, phones included | Chrome's history includes visits synced in from your other devices, and marks them as not local. Chrome does not say which device, so they share one name |
+| Named on items | a name found on items but not reporting in | an older version of the extension, or a browser renamed since |
+
+History is read again every 30 minutes (the last three days) and once a day (all of it), because
+Chrome fires no event when visits arrive from another device.
+
+What it cannot see, and why:
+
+- A Chrome without the extension shows up only through Chrome sync: its open tabs under its own
+  name, and its history under "Synced from other devices". Both need Chrome sync of history turned
+  on, on both devices. Chrome stops listing a device it has not heard from for a while.
+- From a phone, a sent application is seen only when its address shows it (Greenhouse
+  `/confirmation`, Lever `/thanks`). Ashby confirms on the same address, so an Ashby application sent
+  from a phone cannot be seen. A Google Form sent from a phone shows as Submitted only if Chrome kept
+  the response page in history, which is not yet verified.
+- The Chrome-sync parts (open tabs, synced history) are tested with simulated data only. No real phone has been tried yet:
+  open a Google Form on your phone's Chrome, then open the list on your computer and look for it.
+- Safari on iPhone, Firefox, and in-app browsers (Instagram, Discord) never appear.
+- Whether Edge reports synced devices to extensions the way Chrome does is not tested. Edge itself
+  appears once the extension is installed there and signed in.
+- Google's own list of signed-in devices (myaccount.google.com › Security › Your devices) has no
+  API an extension can use.
+- The same computer can appear twice: once by the name you gave the extension ("Chrome on Windows")
+  and once by the name Chrome sync gives it ("DESKTOP-4F2K"), seen from your other Chromes. Items
+  are counted against device names, so two browsers left with the same default name count as one:
+  give each a distinct name under "More options".
+
 ### Job applications (Greenhouse, Lever, Ashby)
 
 The list also records job applications you send on three common hiring sites. A posting you only
@@ -74,6 +111,19 @@ without it, each computer's copy got an ID from its folder path, and the lists n
 empty list. Click "Download CSV" in the old copy first if you want to keep it, then remove the old
 copy and load the new one. The first scan re-reads your history, so most of the list comes back
 anyway.
+
+### Update
+
+Unpacked extensions never update themselves. On Windows, `tools/update.ps1` downloads the latest
+version from GitHub and replaces the files in your extension folder (your list is not stored there):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File update.ps1 -Target "C:\path\to\your\extension\folder"
+```
+
+Add `-Branch <name>` for a version not yet merged into `main`. Then click the reload arrow on Form
+History's card in `chrome://extensions` (and `edge://extensions`). The script refuses to touch a
+folder that does not hold Form History.
 
 ### Add your phone
 
@@ -173,6 +223,7 @@ list says so. "Forget everything" deletes the records from every synced browser.
 | history | read past visits to Google Forms |
 | webNavigation | catch the page after Submit even if history leaves it out |
 | storage | keep and sync the list |
+| sessions | list this account's other Chrome devices and the forms open in their tabs |
 | alarms | run the open/closed check once a day, and sync every 30 minutes |
 | identity | open Google's sign-in window for sharing between browsers |
 | www.googleapis.com, oauth2.googleapis.com | read and write the shared file in Drive's app-data folder; sign out |

@@ -1,17 +1,20 @@
 // The shared list that Chrome and Edge both read and write: one JSON file in the hidden app-data
 // folder of the user's own Google Drive. Pure logic only; src/sync.js does the talking.
+import { mergeDevices } from './devices.js';
 import { mergeRecords } from './forms.js';
 
 export const DOC_NAME = 'form-history.json';
 export const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
 
 /**
- * { v, clearedAt, records: {id: record}, status: {id: {state, at}} }
+ * { v, clearedAt, records: {id: record}, status: {id: {state, at}}, devices: {id: device} }
+ * devices: every browser that has synced, and every device Chrome sync showed them (src/devices.js).
+ * Older versions of the extension drop it when they write; each browser adds itself back on its next sync.
  * clearedAt: when someone pressed "Forget everything". Anything last seen before it is gone
  * everywhere, so a browser that was offline at the time cannot bring it back.
  */
 export function emptyDoc() {
-  return { v: 1, clearedAt: 0, records: {}, status: {} };
+  return { v: 1, clearedAt: 0, records: {}, status: {}, devices: {} };
 }
 
 export function parseDoc(text) {
@@ -24,7 +27,7 @@ export function parseDoc(text) {
   if (data?.v !== 1 || typeof data.records !== 'object' || data.records === null) {
     throw new Error('The shared list in Google Drive is from an unknown version.');
   }
-  return { ...emptyDoc(), ...data, status: data.status ?? {} };
+  return { ...emptyDoc(), ...data, status: data.status ?? {}, devices: mergeDevices({}, data.devices ?? {}) };
 }
 
 function mergeStatus(a = {}, b = {}) {
@@ -42,13 +45,14 @@ export function mergeDocs(a, b) {
     if ((r.l || 0) > clearedAt) records[id] = r;
   }
   const status = Object.fromEntries(Object.entries(mergeStatus(a.status, b.status)).filter(([id]) => id in records));
-  return { v: 1, clearedAt, records, status };
+  const devices = Object.fromEntries(Object.entries(mergeDevices(a.devices, b.devices)).filter(([, d]) => d.seen > clearedAt));
+  return { v: 1, clearedAt, records, status, devices };
 }
 
 /** Stable text for a doc, so two equal docs compare equal whatever order their keys arrived in. */
 export function docText(doc) {
   const sorted = (obj) => Object.fromEntries(Object.keys(obj).sort().map((k) => [k, obj[k]]));
-  return JSON.stringify({ v: 1, clearedAt: doc.clearedAt || 0, records: sorted(doc.records), status: sorted(doc.status) });
+  return JSON.stringify({ v: 1, clearedAt: doc.clearedAt || 0, records: sorted(doc.records), status: sorted(doc.status), devices: sorted(doc.devices ?? {}) });
 }
 
 export const isClientId = (s) => /^[\w.-]+\.apps\.googleusercontent\.com$/.test(String(s ?? '').trim());

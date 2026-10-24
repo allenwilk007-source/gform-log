@@ -56,6 +56,7 @@ To re-render the images after changing the page: `node tools/store-screenshots.m
 | history | Finds the Google Forms and job applications already in the browser's history when the extension is installed, and notices new ones. Every other page is skipped and nothing else is stored. |
 | webNavigation | Records the page shown after a Google Form or job application is submitted, including pages that change their address without loading a new page, which history alone can miss. |
 | storage | Keeps the list in the browser and syncs it between the user's browsers. |
+| sessions | Lists the user's other Chrome devices on the same account, so the list can show every device it covers, and adds any Google Form or sent job application open in their tabs. Other tabs are ignored and nothing about them is stored. |
 | alarms | Runs the once-a-day check of whether each form and posting is still open, and the half-hourly sync. |
 | identity | Opens Google's sign-in window when the user chooses to share the list between browsers through their own Google Drive. |
 | Host permission: docs.google.com | Reads the titles of Google Forms the user opens, and loads each listed form to check whether it still accepts responses. |

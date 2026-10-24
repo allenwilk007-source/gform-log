@@ -102,3 +102,16 @@ button:focus-visible, input:focus-visible, a:focus-visible, summary:focus-visibl
 .source[data-src] .dot { background: var(--src); }
 .card[data-src] { border-left: 4px solid var(--src); }
 .site { font-weight: 600; color: var(--src, var(--muted)); }
+
+.devices { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin: 0 0 16px; }
+.device-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.device { display: grid; gap: 1px; padding: 6px 12px; border-radius: 10px; text-align: left; max-width: 260px; }
+.device[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+.device-top { display: flex; align-items: baseline; gap: 8px; }
+.device-name { font-weight: 600; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.device .n { margin-left: auto; color: var(--muted); font-size: 12px; font-weight: 600; }
+.device-line { color: var(--muted); font-size: 11.5px; }
+.device[data-via="chrome-sync"] .device-name::before { content: "▣ "; color: var(--muted); }
+.device[data-via="history"], .device[data-via="takeout"] { border-style: dashed; }
+.device.quiet .device-line { color: var(--bad); }
+@media (max-width: 560px) { .device { max-width: none; flex: 1 1 100%; } }
