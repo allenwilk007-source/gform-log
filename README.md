@@ -112,6 +112,19 @@ empty list. Click "Download CSV" in the old copy first if you want to keep it, t
 copy and load the new one. The first scan re-reads your history, so most of the list comes back
 anyway.
 
+### Update
+
+Unpacked extensions never update themselves. On Windows, `tools/update.ps1` downloads the latest
+version from GitHub and replaces the files in your extension folder (your list is not stored there):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File update.ps1 -Target "C:\path\to\your\extension\folder"
+```
+
+Add `-Branch <name>` for a version not yet merged into `main`. Then click the reload arrow on Form
+History's card in `chrome://extensions` (and `edge://extensions`). The script refuses to touch a
+folder that does not hold Form History.
+
 ### Add your phone
 
 Phone browsers cannot run extensions, so phone history has to arrive another way. Try the first route
