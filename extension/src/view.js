@@ -1,5 +1,22 @@
 // What the list page shows for each form, kept apart from the page so it can be unit tested.
 // Every form gets two marks: did you submit it, and is it open right now.
+import { isJobKey } from './jobs.js';
+
+/** Where an item came from. Lever's EU board counts as Lever. */
+export const SOURCES = [
+  { id: 'forms', name: 'Google Forms', where: 'docs.google.com/forms' },
+  { id: 'gh', name: 'Greenhouse', where: 'job-boards.greenhouse.io' },
+  { id: 'lv', name: 'Lever', where: 'jobs.lever.co' },
+  { id: 'ab', name: 'Ashby', where: 'jobs.ashbyhq.com' },
+];
+/** Sites people often ask about that are not tracked yet. Shown so the list's limits are plain. */
+export const NOT_YET = ['Handshake', 'Workday', 'LinkedIn', 'Indeed'];
+
+export function sourceOf(key) {
+  if (!isJobKey(key)) return 'forms';
+  const site = String(key).split(':')[0];
+  return site === 'lve' ? 'lv' : site;
+}
 
 /** Open-or-closed mark: {key, label, hint}. `key` is open, closed or unknown. */
 export function openMark(check, rec) {
@@ -47,17 +64,20 @@ const rank = (item) => (item.open.key === 'open' ? (item.submitted ? 1 : 0) : it
  * The rows to show, and the counts for each filter tab.
  * Forms seen only in the editor are left out unless `showEditor` is set.
  */
-export function buildView(records, status, { filter = 'all', query = '', showEditor = false } = {}) {
+export function buildView(records, status, { filter = 'all', source = 'all', query = '', showEditor = false } = {}) {
   const q = query.trim().toLowerCase();
-  const items = [];
+  const all = [];
   for (const [id, rec] of records) {
     if (rec.e && !rec.s && !showEditor) continue;
     if (q && !(rec.t || '').toLowerCase().includes(q)) continue;
-    items.push({ id, rec, submitted: wasSubmitted(rec, status[id]), open: openMark(status[id], rec) });
+    all.push({ id, rec, source: sourceOf(id), submitted: wasSubmitted(rec, status[id]), open: openMark(status[id], rec) });
   }
+  // Counts per source ignore the source filter, so every source button keeps showing its total.
+  const sourceCounts = { all: all.length, ...Object.fromEntries(SOURCES.map((s) => [s.id, all.filter((i) => i.source === s.id).length])) };
+  const items = source === 'all' ? all : all.filter((i) => i.source === source);
   const counts = Object.fromEntries(FILTERS.map((f) => [f, items.filter((i) => matches(f, i)).length]));
   const rows = items.filter((i) => matches(filter, i)).sort((a, b) => rank(a) - rank(b) || (b.rec.l || 0) - (a.rec.l || 0));
-  return { rows, counts };
+  return { rows, counts, sourceCounts };
 }
 
 /** "3 min ago", "yesterday", "Oct 4". */

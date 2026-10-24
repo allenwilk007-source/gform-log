@@ -3,6 +3,7 @@
 // Because merging never loses anything, two browsers syncing at the same moment cannot lose a form
 // for good: whichever upload lands second is repaired by the next run of the other browser.
 import { authUrl, docText, DOC_NAME, isClientId, mergeDocs, parseDoc, tokenFromRedirect } from './cloud.js';
+import { GOOGLE_CLIENT_ID } from './config.js';
 import { AuthError, createDrive } from './drive.js';
 import { sameEnough } from './forms.js';
 import { forgetBefore, loadAll, loadClearedAt, loadStatus, saveStatus, upsert } from './store.js';
@@ -15,7 +16,9 @@ export const SYNC_EVERY_MINUTES = 30;
 
 export async function loadCloud() {
   const [{ cloud }, { googleClientId }] = await Promise.all([chrome.storage.local.get('cloud'), chrome.storage.sync.get('googleClientId')]);
-  return { clientId: googleClientId ?? '', email: '', lastSync: 0, error: '', running: false, ...cloud };
+  // A client ID someone pasted wins over the built-in one, so a developer can test their own.
+  const clientId = googleClientId || GOOGLE_CLIENT_ID;
+  return { clientId, builtInClient: !googleClientId && Boolean(GOOGLE_CLIENT_ID), email: '', lastSync: 0, error: '', running: false, ...cloud };
 }
 
 async function saveCloud(patch) {

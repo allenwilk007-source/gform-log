@@ -34,6 +34,29 @@ have not submitted come first, because those are the ones still worth acting on.
 importing, exporting, renaming this browser and showing forms you made yourself are under
 "More options".
 
+### Job applications (Greenhouse, Lever, Ashby)
+
+The list also records job applications you send on three common hiring sites. A posting you only
+read is not listed; an application appears once it is sent, marked Submitted, with the site's name.
+
+| Site | How a sent application is spotted | Confirmed on the live site? |
+|---|---|---|
+| Greenhouse | the address ends in `/confirmation` | yes, it shows up across many companies' boards |
+| Lever | the address ends in `/thanks` | not yet |
+| Ashby | a thank-you message appears after you press Submit | not yet |
+| Greenhouse inside a company's own careers page | a thank-you message, as for Ashby | not yet |
+
+The thank-you check only counts a message that appears after you press a Submit or Apply button, and
+only if it is new: a page that already says "thank you for your interest", followed by a Submit that
+fails, is not counted. Past Greenhouse and Lever applications are also found in your history, since
+their addresses show they were sent.
+
+"Check now" also checks each posting: Open while it is still up, Closed once it is gone. Ashby builds
+its pages in the browser, so its postings show as Unclear.
+
+If an application you sent does not appear, save the page shown after Submit (Ctrl+S) and send it in,
+so the matching rule can be fixed.
+
 ### Install
 
 1. Download this repo (Code › Download ZIP) and unzip it.
@@ -99,6 +122,9 @@ Drive. There is no server to run.
 - **Where the sign-in lives:** in memory only, for an hour at a time. It renews quietly while you
   stay signed in to Google in that browser.
 
+**Installed from a store?** Skip this setup: the client ID is built in, so just click "Sign in with
+Google". The steps below are for unpacked copies built without one (see Publishing).
+
 **One-time setup in Google Cloud (about 10 minutes).** Google requires every app that signs people
 in to have its own client ID. The project you made for form-board works, or create a new one.
 
@@ -151,6 +177,7 @@ list says so. "Forget everything" deletes the records from every synced browser.
 | identity | open Google's sign-in window for sharing between browsers |
 | www.googleapis.com, oauth2.googleapis.com | read and write the shared file in Drive's app-data folder; sign out |
 | docs.google.com | read form titles, and load forms for the open/closed check |
+| Greenhouse, Lever and Ashby job sites | spot a sent application, and check whether a posting is still up |
 
 ### Known limits
 
@@ -161,13 +188,46 @@ list says so. "Forget everything" deletes the records from every synced browser.
   history.
 - The open/closed check reads Google's public form page, which Google can change without notice.
 
-### The signing key
+## Publishing
 
-`manifest.json` holds only the public half of the key. The private half is not in this repo and must
-never be committed (`*.pem` is ignored). You need it once: when first uploading to the Chrome Web
-Store, put it in the root of the zip, named `key.pem`, and the store keeps the same ID. If it is
-lost, the store assigns a new ID; replace `key` in the manifest with the one the store shows, and
-update `EXTENSION_ID` in `tests/manifest.test.js`.
+What is ready in this repo: the homepage and privacy policy in `docs/`, the listing text and images in
+`store/`, and `npm run zip:store`, which builds the package the stores want. The steps below need your
+accounts, in this order.
+
+1. **Turn on GitHub Pages.** In the repo's Settings › Pages, set Source to "Deploy from a branch",
+   branch `main`, folder `/docs`. The site appears at https://allenwilk007-source.github.io/gform-log/
+   within a few minutes. Both the store and Google need its privacy page.
+2. **Build in the client ID.** Put your Google client ID (it ends in `.apps.googleusercontent.com`)
+   in `extension/src/config.js`. It is public by design; the client *secret* never goes in the repo.
+   Store users then only see "Sign in with Google".
+3. **Get Google's approval to go public.** In Google Auth Platform:
+   - Branding: app name "Form History", your support email, homepage
+     `https://allenwilk007-source.github.io/gform-log/`, privacy policy
+     `https://allenwilk007-source.github.io/gform-log/privacy.html`, and authorized domain
+     `allenwilk007-source.github.io`. Leave the logo empty: a logo makes Google review the branding.
+   - Audience: click **Publish app**. While it is "Testing", only listed test users can sign in.
+   - `drive.appdata` is a non-sensitive scope, so there is no security assessment. If Google asks you
+     to prove you own the domain, it gives you a tag to add to `docs/index.html`.
+4. **Upload a draft to the Chrome Web Store.** Register at the Chrome Web Store Developer Dashboard
+   (a one-time $5 fee). Run `npm run zip:store`, choose New item, upload `form-history-store.zip`,
+   and fill in the listing from `store/listing.md`. **Save it as a draft; do not submit yet.**
+5. **Adopt the store's ID.** The store assigns the extension a new ID. On the item's Package tab, copy
+   the public key, put it in `extension/manifest.json` as `key` (one line, no BEGIN/END lines), and
+   update `EXTENSION_ID` in `tests/manifest.test.js` and the IDs in the browser tests. Unpacked
+   copies then share the store's ID.
+6. **Allow sign-in from the store's ID.** In Google Auth Platform › Clients, open your client and add
+   `https://<store ID>.chromiumapp.org/` to Authorized redirect URIs. Keep the old one while you
+   still use unpacked copies.
+7. **Submit for review**, with visibility **Unlisted** first. Install it from the store, sign in,
+   and check that your list comes back. It is kept in your Drive, not under the old ID.
+   Then switch to Public.
+8. **Edge Add-ons (free).** Upload the same zip at Microsoft Partner Center. Edge gives it its own
+   ID: add that ID's `https://<edge ID>.chromiumapp.org/` redirect URI as well. Edge and Chrome
+   installs still share one list, because the Drive file belongs to your Google Cloud project, not
+   to an extension ID.
+
+The private key from the earlier unpacked setup (`forms-i-answered-key.pem`) is not needed for the
+store, which issues its own. Keep it anyway until the store ID is in the manifest.
 
 ## tools/find_forms_in_history.py
 
@@ -183,9 +243,12 @@ python tools/find_forms_in_history.py
 ```bash
 npm install
 npm test               # unit tests for the parsing and merging logic
-npm run test:browser   # loads the extension into Chromium against fake Google pages, then runs two
-                       # browser profiles that share one list through a fake Google Drive
-npm run zip            # packs extension/ into form-history.zip
+npm run test:browser   # loads the extension into Chromium against fake Google pages, runs two
+                       # browser profiles that share one list through a fake Google Drive, and
+                       # applies to jobs on fake Greenhouse, Lever and Ashby pages
+npm run zip            # packs extension/ into form-history.zip, for loading unpacked
+npm run zip:store      # the store package: no "key" field, and requires a built-in client ID
+node tools/store-screenshots.mjs   # re-renders the store images in store/ from sample data
 ```
 
 GitHub Actions runs both test suites on every pull request and every push to main, and keeps the

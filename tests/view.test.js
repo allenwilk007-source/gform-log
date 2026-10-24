@@ -50,3 +50,23 @@ test('relative times', () => {
   assert.equal(ago(now - 4 * 86400_000, now), '4 days ago');
   assert.equal(ago(0, now), '');
 });
+
+test('sources: every item has one, and the list filters by it', async () => {
+  const { sourceOf } = await import('../extension/src/view.js');
+  assert.equal(sourceOf('1FAIpQLSc_abc'), 'forms');
+  assert.equal(sourceOf('gh:acme/1'), 'gh');
+  assert.equal(sourceOf('lve:acme/x'), 'lv', "Lever's EU board counts as Lever");
+  assert.equal(sourceOf('ab:acme/x'), 'ab');
+
+  const records = new Map([
+    ['form1', rec({ t: 'Club form', l: 3 })],
+    ['gh:acme/1', rec({ t: 'Analyst', l: 2, s: 2 })],
+    ['lv:acme/x', rec({ t: 'Engineer', l: 1, s: 1 })],
+  ]);
+  const all = buildView(records, {});
+  assert.deepEqual(all.sourceCounts, { all: 3, forms: 1, gh: 1, lv: 1, ab: 0 });
+  const gh = buildView(records, {}, { source: 'gh' });
+  assert.deepEqual(gh.rows.map((r) => r.id), ['gh:acme/1']);
+  assert.deepEqual(gh.counts, { all: 1, open: 0, submitted: 1, closed: 0 }, 'tab counts follow the chosen source');
+  assert.deepEqual(gh.sourceCounts, all.sourceCounts, 'source counts stay totals');
+});

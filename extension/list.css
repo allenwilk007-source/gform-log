@@ -1,11 +1,13 @@
 :root {
   color-scheme: light dark;
+  --src-forms: #7248b9; --src-gh: #1f8a4c; --src-lv: #3563d8; --src-ab: #c9542d;
   --bg: #f6f7f9; --card: #ffffff; --fg: #1d1f23; --muted: #5f6672; --line: #e2e5ea;
   --accent: #5b3cc4; --accent-fg: #ffffff; --accent-soft: #efeafd;
   --ok: #137a3a; --ok-soft: #e3f4e8; --bad: #b3261e; --bad-soft: #fbe7e5; --neutral-soft: #eef0f3;
 }
 @media (prefers-color-scheme: dark) {
   :root {
+    --src-forms: #b79cf0; --src-gh: #6fd39b; --src-lv: #8fb0ff; --src-ab: #f29a78;
     --bg: #17181b; --card: #212327; --fg: #e9eaed; --muted: #a2a8b3; --line: #33363c;
     --accent: #b6a3ff; --accent-fg: #1a1230; --accent-soft: #2c2547;
     --ok: #7fd49a; --ok-soft: #1d3326; --bad: #f2948b; --bad-soft: #3d2220; --neutral-soft: #2b2e33;
@@ -81,3 +83,22 @@ button:focus-visible, input:focus-visible, a:focus-visible, summary:focus-visibl
   #q { flex: none; max-width: none; }
   .brand h1 { font-size: 19px; }
 }
+
+.tagline { margin: 0; color: var(--muted); font-size: 13px; }
+
+.sources { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin: 0 0 14px; }
+.sources-label { color: var(--muted); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+.source-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.source { display: inline-flex; align-items: center; gap: 7px; padding: 5px 11px; border-radius: 99px; font-size: 13px; }
+.source[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); font-weight: 600; }
+.source .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); }
+.source .n { color: var(--muted); font-size: 12px; font-weight: 600; }
+.not-yet { flex-basis: 100%; margin: 0; color: var(--muted); font-size: 12.5px; }
+
+[data-src="forms"] { --src: var(--src-forms); }
+[data-src="gh"] { --src: var(--src-gh); }
+[data-src="lv"] { --src: var(--src-lv); }
+[data-src="ab"] { --src: var(--src-ab); }
+.source[data-src] .dot { background: var(--src); }
+.card[data-src] { border-left: 4px solid var(--src); }
+.site { font-weight: 600; color: var(--src, var(--muted)); }
