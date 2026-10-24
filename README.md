@@ -44,14 +44,22 @@ saw. Click one to show only what was seen there. A device gets there in one of f
 | This browser | the browser you are looking at | always |
 | Form History installed | another browser running the extension | it reports in through Chrome sync (Chrome to Chrome) or the shared Google Drive file (any browser that signed in) |
 | Open tabs via Chrome sync | any other Chrome on the account, phones included, even without the extension | Chrome's own list of synced devices (`chrome.sessions`). Forms and sent applications in its **open tabs** are added under its name |
+| History via Chrome sync ("Synced from other devices") | every other Chrome on the account, phones included | Chrome's history includes visits synced in from your other devices, and marks them as not local. Chrome does not say which device, so they share one name |
 | Named on items | a name found on items but not reporting in | an older version of the extension, or a browser renamed since |
+
+History is read again every 30 minutes (the last three days) and once a day (all of it), because
+Chrome fires no event when visits arrive from another device.
 
 What it cannot see, and why:
 
-- A browser without the extension shows up only through Chrome sync, and only its open tabs, not
-  its history. That needs Chrome sync of history and open tabs turned on, on both devices. Chrome
-  stops listing a device it has not heard from for a while.
-- The Chrome-sync part is tested with simulated device lists only. No real phone has been tried yet:
+- A Chrome without the extension shows up only through Chrome sync: its open tabs under its own
+  name, and its history under "Synced from other devices". Both need Chrome sync of history turned
+  on, on both devices. Chrome stops listing a device it has not heard from for a while.
+- From a phone, a sent application is seen only when its address shows it (Greenhouse
+  `/confirmation`, Lever `/thanks`). Ashby confirms on the same address, so an Ashby application sent
+  from a phone cannot be seen. A Google Form sent from a phone shows as Submitted only if Chrome kept
+  the response page in history, which is not yet verified.
+- The Chrome-sync parts (open tabs, synced history) are tested with simulated data only. No real phone has been tried yet:
   open a Google Form on your phone's Chrome, then open the list on your computer and look for it.
 - Safari on iPhone, Firefox, and in-app browsers (Instagram, Discord) never appear.
 - Whether Edge reports synced devices to extensions the way Chrome does is not tested. Edge itself

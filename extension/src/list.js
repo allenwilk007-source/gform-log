@@ -85,6 +85,7 @@ function deviceLine(d, now = Date.now()) {
     return `${quiet ? 'Quiet since' : 'Reported'} ${ago(d.seen)} · Form History installed`;
   }
   if (d.via === 'chrome-sync') return `Open tabs via Chrome sync · ${ago(d.seen) || 'no tabs'}`;
+  if (d.via === 'history-sync') return `History via Chrome sync · last ${ago(d.seen)}`;
   if (d.via === 'takeout') return 'From a Google Takeout file';
   return `Named on items, last ${ago(d.seen) || 'unknown'} · not reporting in`;
 }
@@ -113,7 +114,7 @@ function renderDevices(deviceCounts) {
   const others = devices.filter((d) => d.via === 'extension' && !d.self).length;
   $('devices-hint').textContent = cloud?.email
     ? `Missing a computer? Install Form History there and sign in with Google under More options › Share. ${others ? '' : 'None has reported in yet. '}` +
-      'Phones and other Chrome devices show their open tabs here when Chrome syncs open tabs. iPhone Safari and browsers without the extension cannot be seen.'
+      'Phones and other Chromes on your Google account add their history and open tabs here when Chrome sync of history is on. Safari, Firefox and in-app browsers cannot be seen.'
     : 'Only this browser and the devices Chrome sync lists are shown. To add Edge or another computer, sign in with Google under More options › Share, in each browser.';
 }
 

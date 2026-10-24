@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { cleanDevice, deviceList, fromChromeSync, mergeDevices, seenOn } from '../extension/src/devices.js';
+import { cleanDevice, deviceList, fromChromeSync, mergeDevices, seenOn, splitByOrigin, SYNCED_NAME } from '../extension/src/devices.js';
+import { recordsFromHistory } from '../extension/src/forms.js';
 import { buildView } from '../extension/src/view.js';
 import { docText, emptyDoc, mergeDocs, parseDoc } from '../extension/src/cloud.js';
 
@@ -93,4 +94,20 @@ test('the shared file carries devices, merges them, and forgets them with everyt
   assert.deepEqual(parseDoc(docText(merged)).devices, merged.devices);
   assert.deepEqual(parseDoc(JSON.stringify({ v: 1, records: {} })).devices, {}, 'a file from an older version has none');
   assert.deepEqual(Object.keys(mergeDocs(merged, { ...emptyDoc(), clearedAt: 150 }).devices), ['e'], '"Forget everything" drops devices last seen before it');
+});
+
+test('history Chrome synced in from other devices is credited to them, not to this browser', () => {
+  const url = 'https://docs.google.com/forms/d/e/1FAIpQLSc_PhonePhonePhonePhonePhonePhonePhonePhoneP/viewform';
+  const item = { url, title: 'Phone poll - Google Forms', lastVisitTime: 900 };
+  assert.deepEqual(splitByOrigin(item, [], 'PC'), [{ ...item, device: 'PC' }], 'no visit details: this browser');
+  assert.deepEqual(splitByOrigin(item, [{ visitTime: 900, isLocal: true }], 'PC').map((i) => i.device), ['PC']);
+  const onlyPhone = splitByOrigin(item, [{ visitTime: 500, isLocal: false }, { visitTime: 900, isLocal: false }], 'PC');
+  assert.deepEqual(onlyPhone.map((i) => [i.device, i.lastVisitTime]), [[SYNCED_NAME, 900]]);
+  const both = splitByOrigin(item, [{ visitTime: 300, isLocal: true }, { visitTime: 900, isLocal: false }], 'PC');
+  const rec = recordsFromHistory(both, 'PC').get('1FAIpQLSc_PhonePhonePhonePhonePhonePhonePhonePhoneP');
+  assert.deepEqual(rec.d, ['PC', SYNCED_NAME].sort());
+  assert.equal(rec.l, 900);
+
+  const rows = deviceList({ 'history-sync': cleanDevice({ name: SYNCED_NAME, via: 'history-sync', seen: 900 }) }, new Map([['x', { ...rec }]]), 'me');
+  assert.equal(rows.find((r) => r.name === SYNCED_NAME).via, 'history-sync');
 });

@@ -3,6 +3,7 @@
 // A device is known in one of four ways:
 //   extension    Form History runs there and has reported in (through Chrome sync or Google Drive)
 //   chrome-sync  Chrome lists it among this account's devices, with its open tabs
+//   history-sync one entry standing for every other device whose history Chrome syncs here
 //   takeout      named in an imported Google Takeout file
 //   history      named on items in the list, but has not reported in (an older version, or renamed)
 import { recordsFromHistory } from './forms.js';
@@ -12,7 +13,14 @@ const MAX_AKA = 5;
 /** An extension device that has not reported in for this long is shown as gone quiet. */
 export const QUIET_AFTER_MS = 7 * 24 * 60 * 60 * 1000;
 
-const VIA = new Set(['extension', 'chrome-sync']);
+const VIA = new Set(['extension', 'chrome-sync', 'history-sync']);
+
+/**
+ * The device name given to visits Chrome synced in from the account's other devices. Chrome says a
+ * visit came from elsewhere, but not from which device, so they all share this one name.
+ */
+export const SYNCED_NAME = 'Synced from other devices';
+export const SYNCED_ID = 'history-sync';
 const text = (s, max = MAX_NAME) => String(s ?? '').trim().slice(0, max);
 
 /** One registry entry, with only known fields, in a fixed key order so equal entries print equal. */
@@ -59,7 +67,22 @@ export function fromChromeSync(sessionDevices = []) {
   return { devices, records: recordsFromHistory(items) };
 }
 
-const ORDER = { extension: 0, 'chrome-sync': 1, history: 2, takeout: 3 };
+/**
+ * Splits one history entry by where its visits happened: in this browser, or on another device and
+ * synced here by Chrome (chrome.history.getVisits marks those isLocal: false). Without visit
+ * details, everything counts as this browser's.
+ */
+export function splitByOrigin(item, visits, here) {
+  const last = (vs) => Math.max(...vs.map((v) => v.visitTime || 0));
+  const local = (visits ?? []).filter((v) => v.isLocal !== false);
+  const synced = (visits ?? []).filter((v) => v.isLocal === false);
+  if (!synced.length) return [{ ...item, device: here }];
+  const out = [{ ...item, lastVisitTime: last(synced), device: SYNCED_NAME }];
+  if (local.length) out.push({ ...item, lastVisitTime: last(local), device: here });
+  return out;
+}
+
+const ORDER = { extension: 0, 'chrome-sync': 1, 'history-sync': 2, history: 3, takeout: 4 };
 
 /**
  * The devices to show: every registry entry, plus every device name found on an item but missing
