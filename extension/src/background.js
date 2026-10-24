@@ -1,7 +1,8 @@
 import { checkAll, DAILY_ALARM, DAY_MINUTES } from './check.js';
+import { fromChromeSync, mergeDevices } from './devices.js';
 import { parseFormUrl, recordFromApplication, recordsFromHistory } from './forms.js';
 import { parseJobUrl } from './jobs.js';
-import { deviceName, loadAll, loadStatus, saveCheckRun, saveStatus, upsert } from './store.js';
+import { deviceName, loadAll, loadDevices, loadStatus, saveCheckRun, saveDevices, saveStatus, touchDevice, upsert } from './store.js';
 import { SYNC_ALARM, SYNC_EVERY_MINUTES, SYNC_SOON_ALARM, signOut, syncNow, syncSoon } from './sync.js';
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -13,6 +14,20 @@ export async function scanHistory(since = 0) {
   const records = recordsFromHistory(items, await deviceName());
   const { written, local } = await upsert(records);
   return { scanned: items.length, forms: records.size, written, local };
+}
+
+/**
+ * Reads the account's other Chrome devices, phones included, from Chrome sync: each one's name and
+ * the tabs it has open. Forms and sent applications in those tabs join the list under that device.
+ * Chrome only knows this when "Open tabs" sync is on; other browsers may report nothing.
+ */
+export async function scanOtherDevices() {
+  await touchDevice();
+  if (!chrome.sessions?.getDevices) return { devices: 0, forms: 0 };
+  const { devices, records } = fromChromeSync(await chrome.sessions.getDevices().catch(() => []));
+  await saveDevices(mergeDevices(await loadDevices(), devices));
+  await upsert(records);
+  return { devices: Object.keys(devices).length, forms: records.size };
 }
 
 let checking = null;
@@ -71,15 +86,18 @@ async function pendingTitle(key) {
 chrome.runtime.onInstalled.addListener(({ reason }) => {
   if (reason === 'install') scanHistory(0);
   ensureAlarms();
+  scanOtherDevices();
 });
 chrome.runtime.onStartup.addListener(async () => {
   ensureAlarms();
   await scanHistory(Date.now() - 7 * DAY);
+  await scanOtherDevices();
   syncNow();
 });
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === DAILY_ALARM) runCheck('daily');
-  if (alarm.name === SYNC_ALARM || alarm.name === SYNC_SOON_ALARM) syncNow();
+  if (alarm.name === SYNC_ALARM) scanOtherDevices().finally(syncNow);
+  if (alarm.name === SYNC_SOON_ALARM) syncNow();
 });
 
 // Any change to the list here (a new form, a check result, "Forget everything") is shared a minute later.
@@ -138,6 +156,7 @@ chrome.action.onClicked.addListener(() => chrome.tabs.create({ url: chrome.runti
 chrome.runtime.onMessage.addListener((msg, sender, reply) => {
   const answer = (p) => p.then(reply, (e) => reply({ error: String(e?.message ?? e) }));
   if (msg?.type === 'scan') return answer(scanHistory(msg.since ?? 0)), true;
+  if (msg?.type === 'devices') return answer(scanOtherDevices()), true;
   if (msg?.type === 'check') return answer(runCheck('button')), true;
   if (msg?.type === 'sync') return answer(syncNow()), true;
   if (msg?.type === 'signOut') return answer(signOut()), true;

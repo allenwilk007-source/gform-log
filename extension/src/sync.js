@@ -6,7 +6,7 @@ import { authUrl, docText, DOC_NAME, isClientId, mergeDocs, parseDoc, tokenFromR
 import { GOOGLE_CLIENT_ID } from './config.js';
 import { AuthError, createDrive } from './drive.js';
 import { sameEnough } from './forms.js';
-import { forgetBefore, loadAll, loadClearedAt, loadStatus, saveStatus, upsert } from './store.js';
+import { forgetBefore, loadAll, loadClearedAt, loadDevices, loadStatus, saveDevices, saveStatus, touchDevice, upsert } from './store.js';
 
 export const SYNC_ALARM = 'cloud-sync';
 export const SYNC_SOON_ALARM = 'cloud-sync-soon';
@@ -91,8 +91,9 @@ export async function signOut() {
 // ---- the sync itself ---------------------------------------------------------------------------
 
 async function localDoc() {
-  const [records, status, clearedAt] = await Promise.all([loadAll(), loadStatus(), loadClearedAt()]);
-  return { v: 1, clearedAt, records: Object.fromEntries(records), status };
+  await touchDevice();
+  const [records, status, clearedAt, devices] = await Promise.all([loadAll(), loadStatus(), loadClearedAt(), loadDevices()]);
+  return { v: 1, clearedAt, records: Object.fromEntries(records), status, devices };
 }
 
 async function applyLocally(merged, local) {
@@ -100,6 +101,7 @@ async function applyLocally(merged, local) {
   const changed = new Map(Object.entries(merged.records).filter(([id, r]) => !sameEnough(local.records[id], r)));
   if (changed.size) await upsert(changed);
   if (JSON.stringify(merged.status) !== JSON.stringify(local.status)) await saveStatus(merged.status);
+  await saveDevices(merged.devices);
 }
 
 let running = null;
@@ -115,7 +117,7 @@ export function syncNow() {
       const email = (await loadCloud()).email || (await drive.email());
 
       const files = await drive.find(DOC_NAME);
-      let remote = { v: 1, clearedAt: 0, records: {}, status: {} };
+      let remote = { v: 1, clearedAt: 0, records: {}, status: {}, devices: {} };
       for (const f of files) remote = mergeDocs(remote, parseDoc(await drive.read(f.id)));
       const local = await localDoc();
       const merged = mergeDocs(remote, local);
@@ -127,7 +129,7 @@ export function syncNow() {
       for (const extra of files.slice(1)) await drive.remove(extra.id);
 
       await saveCloud({ email, lastSync: Date.now(), error: '', running: false });
-      return { state: 'synced', forms: Object.keys(merged.records).length };
+      return { state: 'synced', forms: Object.keys(merged.records).length, devices: Object.keys(merged.devices).length };
     } catch (e) {
       if (e instanceof AuthError) await chrome.storage.session.remove('auth');
       const error = e instanceof AuthError ? 'Google sign-in has expired. Sign in again.' : String(e?.message ?? e);

@@ -102,6 +102,9 @@ const cloudLine = (b) => b.list.$eval('#cloud-text', (n) => n.textContent);
 const cards = (b) =>
   b.list.$$eval('#list .card', (cs) => cs.map((c) => ({ title: c.querySelector('.title').textContent, marks: [...c.querySelectorAll('.mark')].map((m) => m.textContent), meta: c.querySelector('.meta').textContent })));
 
+const devicesShown = (b) =>
+  b.list.$$eval('#devices .device', (ds) => ds.map((d) => ({ name: d.querySelector('.device-name').textContent, n: d.querySelector('.n').textContent, line: d.querySelector('.device-line').textContent })));
+
 async function submitForm(b, id) {
   const tab = await b.context.newPage();
   await tab.goto(`${form(id)}/viewform`);
@@ -173,6 +176,26 @@ try {
     assert.match(c.find((x) => x.title === 'Chrome Survey').meta, /Chrome laptop/);
   }
   assert.ok(!drive.requests.some((r) => r.startsWith('GET /drive/v3/files/') && !r.includes('file-')), 'only the app folder is read');
+
+  // Each browser lists the other under Devices, and clicking a device shows only what it saw.
+  assert.deepEqual(Object.values(sharedDoc().devices).map((d) => d.name).sort(), ['Chrome laptop', 'Edge laptop']);
+  for (const [b, other, otherForm] of [[chromeB, 'Edge laptop', 'Edge Survey'], [edgeB, 'Chrome laptop', 'Chrome Survey']]) {
+    await b.list.bringToFront();
+    const shown = await devicesShown(b);
+    console.log(b.name, 'devices:', shown);
+    assert.equal(shown[0].name, 'All devices');
+    assert.equal(shown[1].name, b.name, 'this browser comes first');
+    assert.match(shown[1].line, /^This browser · synced/);
+    const o = shown.find((d) => d.name === other);
+    assert.ok(o, `${b.name} lists ${other}`);
+    assert.match(o.line, /Reported just now · Form History installed/);
+    assert.equal(o.n, '1');
+    await b.list.click(`.device:has-text("${other}")`);
+    assert.deepEqual((await cards(b)).map((x) => x.title), [otherForm], `${b.name}: filtered to ${other}`);
+    await b.list.click('.device:has-text("All devices")');
+  }
+  await chromeB.list.setViewportSize({ width: 900, height: 700 });
+  await chromeB.list.screenshot({ path: 'tests/screenshot-devices.png' });
 
   // An expired sign-in is reported, and pressing Sync now signs in again.
   drive.liveTokens.clear();

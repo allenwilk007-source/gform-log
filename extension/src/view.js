@@ -1,5 +1,6 @@
 // What the list page shows for each form, kept apart from the page so it can be unit tested.
 // Every form gets two marks: did you submit it, and is it open right now.
+import { seenOn } from './devices.js';
 import { isJobKey } from './jobs.js';
 
 /** Where an item came from. Lever's EU board counts as Lever. */
@@ -61,23 +62,31 @@ function matches(filter, item) {
 const rank = (item) => (item.open.key === 'open' ? (item.submitted ? 1 : 0) : item.open.key === 'unknown' ? 2 : 3);
 
 /**
- * The rows to show, and the counts for each filter tab.
+ * The rows to show, the counts for each filter tab, and the counts on each source and device button.
+ * `devices` is the list from deviceList(); `device` is one of their ids, or 'all'.
  * Forms seen only in the editor are left out unless `showEditor` is set.
  */
-export function buildView(records, status, { filter = 'all', source = 'all', query = '', showEditor = false } = {}) {
+export function buildView(records, status, { filter = 'all', source = 'all', device = 'all', devices = [], query = '', showEditor = false } = {}) {
   const q = query.trim().toLowerCase();
   const all = [];
   for (const [id, rec] of records) {
     if (rec.e && !rec.s && !showEditor) continue;
     if (q && !(rec.t || '').toLowerCase().includes(q)) continue;
-    all.push({ id, rec, source: sourceOf(id), submitted: wasSubmitted(rec, status[id]), open: openMark(status[id], rec) });
+    const on = new Set(devices.filter((d) => seenOn(rec, d)).map((d) => d.id));
+    all.push({ id, rec, on, source: sourceOf(id), submitted: wasSubmitted(rec, status[id]), open: openMark(status[id], rec) });
   }
-  // Counts per source ignore the source filter, so every source button keeps showing its total.
-  const sourceCounts = { all: all.length, ...Object.fromEntries(SOURCES.map((s) => [s.id, all.filter((i) => i.source === s.id).length])) };
-  const items = source === 'all' ? all : all.filter((i) => i.source === source);
+  const bySource = (i) => source === 'all' || i.source === source;
+  const byDevice = (i) => device === 'all' || i.on.has(device);
+  // Each row of buttons counts within the other row's choice, but ignores its own, so every button
+  // keeps showing what clicking it would give.
+  const forSources = all.filter(byDevice);
+  const sourceCounts = { all: forSources.length, ...Object.fromEntries(SOURCES.map((s) => [s.id, forSources.filter((i) => i.source === s.id).length])) };
+  const forDevices = all.filter(bySource);
+  const deviceCounts = { all: forDevices.length, ...Object.fromEntries(devices.map((d) => [d.id, forDevices.filter((i) => i.on.has(d.id)).length])) };
+  const items = forSources.filter(bySource);
   const counts = Object.fromEntries(FILTERS.map((f) => [f, items.filter((i) => matches(f, i)).length]));
   const rows = items.filter((i) => matches(filter, i)).sort((a, b) => rank(a) - rank(b) || (b.rec.l || 0) - (a.rec.l || 0));
-  return { rows, counts, sourceCounts };
+  return { rows, counts, sourceCounts, deviceCounts };
 }
 
 /** "3 min ago", "yesterday", "Oct 4". */

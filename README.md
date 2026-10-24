@@ -34,6 +34,35 @@ have not submitted come first, because those are the ones still worth acting on.
 importing, exporting, renaming this browser and showing forms you made yourself are under
 "More options".
 
+### Devices
+
+The **Devices** row lists every browser and device the list knows about, with how many items each
+saw. Click one to show only what was seen there. A device gets there in one of four ways:
+
+| shown as | what it is | how it gets there |
+|---|---|---|
+| This browser | the browser you are looking at | always |
+| Form History installed | another browser running the extension | it reports in through Chrome sync (Chrome to Chrome) or the shared Google Drive file (any browser that signed in) |
+| Open tabs via Chrome sync | any other Chrome on the account, phones included, even without the extension | Chrome's own list of synced devices (`chrome.sessions`). Forms and sent applications in its **open tabs** are added under its name |
+| Named on items | a name found on items but not reporting in | an older version of the extension, or a browser renamed since |
+
+What it cannot see, and why:
+
+- A browser without the extension shows up only through Chrome sync, and only its open tabs, not
+  its history. That needs Chrome sync of history and open tabs turned on, on both devices. Chrome
+  stops listing a device it has not heard from for a while.
+- The Chrome-sync part is tested with simulated device lists only. No real phone has been tried yet:
+  open a Google Form on your phone's Chrome, then open the list on your computer and look for it.
+- Safari on iPhone, Firefox, and in-app browsers (Instagram, Discord) never appear.
+- Whether Edge reports synced devices to extensions the way Chrome does is not tested. Edge itself
+  appears once the extension is installed there and signed in.
+- Google's own list of signed-in devices (myaccount.google.com › Security › Your devices) has no
+  API an extension can use.
+- The same computer can appear twice: once by the name you gave the extension ("Chrome on Windows")
+  and once by the name Chrome sync gives it ("DESKTOP-4F2K"), seen from your other Chromes. Items
+  are counted against device names, so two browsers left with the same default name count as one:
+  give each a distinct name under "More options".
+
 ### Job applications (Greenhouse, Lever, Ashby)
 
 The list also records job applications you send on three common hiring sites. A posting you only
@@ -173,6 +202,7 @@ list says so. "Forget everything" deletes the records from every synced browser.
 | history | read past visits to Google Forms |
 | webNavigation | catch the page after Submit even if history leaves it out |
 | storage | keep and sync the list |
+| sessions | list this account's other Chrome devices and the forms open in their tabs |
 | alarms | run the open/closed check once a day, and sync every 30 minutes |
 | identity | open Google's sign-in window for sharing between browsers |
 | www.googleapis.com, oauth2.googleapis.com | read and write the shared file in Drive's app-data folder; sign out |

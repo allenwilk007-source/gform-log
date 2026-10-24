@@ -1,8 +1,9 @@
 import { explainSharingError } from './cloud.js';
+import { deviceList, QUIET_AFTER_MS } from './devices.js';
 import { formLink, recordsFromHistory, takeoutHistoryItems, toCsv } from './forms.js';
 import { isJobKey, jobLabel } from './jobs.js';
 import { ago, buildView, NOT_YET, sourceOf, SOURCES } from './view.js';
-import { clearAll, deviceName, loadAll, loadCheckRun, loadStatus, setDeviceName, syncProblem, upsert } from './store.js';
+import { clearAll, deviceId, deviceName, loadAll, loadCheckRun, loadDevices, loadStatus, setDeviceName, syncProblem, upsert } from './store.js';
 import { hasFreshToken, loadCloud, setClientId, signIn } from './sync.js';
 
 const $ = (id) => document.getElementById(id);
@@ -18,8 +19,11 @@ let status = {};
 let checkRun = null;
 let cloud = null;
 let editingClient = false;
+let devices = [];
+let selfId = '';
 let filter = 'all';
 let source = 'all';
+let device = 'all';
 
 function notice(text) {
   $('notice').hidden = !text;
@@ -73,8 +77,49 @@ function renderSources(sourceCounts) {
   $('not-yet').textContent = `Not tracked yet: ${NOT_YET.join(', ')}.`;
 }
 
+/** How each device is known, in words: "This browser · synced 3 min ago". */
+function deviceLine(d, now = Date.now()) {
+  if (d.self) return cloud?.email ? `This browser · synced ${ago(cloud.lastSync) || 'not yet'}` : 'This browser';
+  if (d.via === 'extension') {
+    const quiet = now - d.seen > QUIET_AFTER_MS;
+    return `${quiet ? 'Quiet since' : 'Reported'} ${ago(d.seen)} · Form History installed`;
+  }
+  if (d.via === 'chrome-sync') return `Open tabs via Chrome sync · ${ago(d.seen) || 'no tabs'}`;
+  if (d.via === 'takeout') return 'From a Google Takeout file';
+  return `Named on items, last ${ago(d.seen) || 'unknown'} · not reporting in`;
+}
+
+/** The "Devices" row: one button per browser or device the list knows, with its count, that filters the list. */
+function renderDevices(deviceCounts) {
+  const now = Date.now();
+  const button = (d) => {
+    const b = el('button', { className: 'device', type: 'button' });
+    const all = d.id === 'all';
+    b.dataset.via = all ? 'all' : d.via;
+    if (!all && d.via === 'extension' && !d.self && now - d.seen > QUIET_AFTER_MS) b.classList.add('quiet');
+    b.append(
+      el('span', { className: 'device-top' }, el('span', { className: 'device-name', textContent: all ? 'All devices' : d.name }), el('span', { className: 'n', textContent: String(deviceCounts[d.id] ?? 0) })),
+      el('span', { className: 'device-line', textContent: all ? `${devices.length} known` : deviceLine(d, now) }),
+    );
+    if (!all && d.names.length > 1) b.title = `Also called: ${d.names.slice(1).join(', ')}`;
+    b.setAttribute('aria-pressed', String(device === d.id));
+    b.addEventListener('click', () => {
+      device = d.id;
+      render();
+    });
+    return b;
+  };
+  $('devices').replaceChildren(button({ id: 'all' }), ...devices.map(button));
+  const others = devices.filter((d) => d.via === 'extension' && !d.self).length;
+  $('devices-hint').textContent = cloud?.email
+    ? `Missing a computer? Install Form History there and sign in with Google under More options › Share. ${others ? '' : 'None has reported in yet. '}` +
+      'Phones and other Chrome devices show their open tabs here when Chrome syncs open tabs. iPhone Safari and browsers without the extension cannot be seen.'
+    : 'Only this browser and the devices Chrome sync lists are shown. To add Edge or another computer, sign in with Google under More options › Share, in each browser.';
+}
+
 function emptyMessage() {
   if ($('q').value.trim()) return 'Nothing matches your search.';
+  if (device !== 'all') return 'Nothing seen on this device with these filters.';
   const s = SOURCES.find((x) => x.id === source);
   if (s && filter === 'all') {
     return s.id === 'forms'
@@ -127,9 +172,15 @@ function renderCloud() {
   $('sync').disabled = Boolean(cloud.running);
 }
 
+function viewOptions() {
+  return { filter, source, device, devices, query: $('q').value, showEditor: $('showEditor').checked };
+}
+
 function render() {
-  const { rows, counts, sourceCounts } = buildView(records, status, { filter, source, query: $('q').value, showEditor: $('showEditor').checked });
+  if (device !== 'all' && !devices.some((d) => d.id === device)) device = 'all';
+  const { rows, counts, sourceCounts, deviceCounts } = buildView(records, status, viewOptions());
   renderSources(sourceCounts);
+  renderDevices(deviceCounts);
   for (const b of document.querySelectorAll('[data-filter]')) b.setAttribute('aria-pressed', String(b.dataset.filter === filter));
   for (const c of document.querySelectorAll('[data-count]')) c.textContent = counts[c.dataset.count];
   $('list').replaceChildren(...rows.map(card));
@@ -142,7 +193,9 @@ function render() {
 }
 
 async function refresh() {
-  [records, status, checkRun, cloud] = await Promise.all([loadAll(), loadStatus(), loadCheckRun(), loadCloud()]);
+  let known;
+  [records, status, checkRun, cloud, known, selfId] = await Promise.all([loadAll(), loadStatus(), loadCheckRun(), loadCloud(), loadDevices(), deviceId()]);
+  devices = deviceList(known, records, selfId);
   const problem = await syncProblem();
   if (problem) notice(`Some forms are kept only in this browser because sync storage is full: ${problem}`);
   render();
@@ -202,7 +255,7 @@ $('takeout').addEventListener('change', async (e) => {
 });
 
 $('csv').addEventListener('click', () => {
-  const { rows } = buildView(records, status, { filter, source, query: $('q').value, showEditor: $('showEditor').checked });
+  const { rows } = buildView(records, status, viewOptions());
   const blob = new Blob([toCsv(rows.map((r) => [r.id, r.rec]))], { type: 'text/csv' });
   const a = el('a', { href: URL.createObjectURL(blob), download: 'google-forms.csv' });
   a.click();
@@ -279,3 +332,5 @@ chrome.storage.onChanged.addListener(() => refresh());
 
 $('device').value = await deviceName();
 await refresh();
+// Ask Chrome for this account's other devices now, rather than waiting for the half-hourly look.
+chrome.runtime.sendMessage({ type: 'devices' }).catch(() => {});
